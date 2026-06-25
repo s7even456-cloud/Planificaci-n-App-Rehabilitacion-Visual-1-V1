@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Rehabilitación Visual</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ===================== PANTALLA: CONFIGURACIÓN ===================== -->
+  <section id="screen-config" class="screen active">
+    <div class="panel">
+      <h1>Rehabilitación Visual</h1>
+      <p class="subtitle">
+        Fija la mirada en la figura central mientras aparecen estímulos en la periferia.
+        Cubre cada estímulo con un gomet y pulsa <kbd>Espacio</kbd> para continuar.
+      </p>
+
+      <form id="config-form">
+        <fieldset>
+          <legend>Estímulos</legend>
+
+          <label class="field">
+            <span>Número de estímulos: <output id="out-count">15</output></span>
+            <input type="range" id="cfg-count" min="1" max="60" value="15" />
+          </label>
+
+          <label class="field">
+            <span>Tipo de estímulo</span>
+            <select id="cfg-stimulus-type">
+              <option value="x-red">Equis roja</option>
+              <option value="dot-red">Punto rojo</option>
+              <option value="dot-black">Punto negro</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Tamaño del estímulo: <output id="out-stim-size">4.0</output>%</span>
+            <input type="range" id="cfg-stim-size" min="1" max="12" step="0.5" value="4" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Figura central (punto de fijación)</legend>
+
+          <label class="field">
+            <span>Forma central</span>
+            <select id="cfg-center-type">
+              <option value="cross-black">Cruz negra</option>
+              <option value="dot-black">Punto negro</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Tamaño de la figura central: <output id="out-center-size">5.0</output>%</span>
+            <input type="range" id="cfg-center-size" min="1" max="15" step="0.5" value="5" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Opciones</legend>
+
+          <label class="field-inline">
+            <input type="checkbox" id="cfg-sound" checked />
+            <span>Señal acústica de feedback</span>
+          </label>
+
+          <label class="field-inline">
+            <input type="checkbox" id="cfg-adaptive" checked />
+            <span>Adaptativo: reforzar zonas con más fallos</span>
+          </label>
+
+          <label class="field-inline">
+            <input type="checkbox" id="cfg-camera" />
+            <span>Supervisión por cámara (vista previa)</span>
+          </label>
+        </fieldset>
+
+        <button type="submit" class="primary">Comenzar sesión</button>
+      </form>
+
+      <button type="button" id="btn-history" class="link">Ver historial y evolución</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: EJERCICIO ===================== -->
+  <section id="screen-exercise" class="screen">
+    <div id="stage" class="stage">
+      <!-- figura central y estímulo se inyectan aquí -->
+    </div>
+    <div id="exercise-hud" class="hud">
+      <span id="hud-progress">0 / 0</span>
+      <span class="hud-hint">Pulsa <kbd>Espacio</kbd> tras cubrir el estímulo · <kbd>Esc</kbd> salir</span>
+    </div>
+    <video id="cam-preview" class="cam-preview hidden" autoplay muted playsinline></video>
+  </section>
+
+  <!-- ===================== PANTALLA: REVISIÓN ===================== -->
+  <section id="screen-review" class="screen">
+    <div class="panel wide">
+      <h2>Revisión de la sesión</h2>
+      <p class="subtitle">
+        Marca cada estímulo según si lo cubriste correctamente con el gomet.
+        Toca un punto para alternar entre <strong class="ok">acierto</strong> y
+        <strong class="fail">fallo</strong>.
+      </p>
+      <div id="review-map" class="review-map"></div>
+      <div class="review-actions">
+        <button type="button" id="btn-all-ok" class="ghost">Todos acierto</button>
+        <button type="button" id="btn-all-fail" class="ghost">Todos fallo</button>
+        <button type="button" id="btn-save-session" class="primary">Guardar resultados</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: HISTORIAL ===================== -->
+  <section id="screen-history" class="screen">
+    <div class="panel wide">
+      <h2>Historial y evolución</h2>
+      <div id="history-summary" class="history-summary"></div>
+      <div class="chart-wrap">
+        <canvas id="evolution-chart" width="800" height="280"></canvas>
+      </div>
+      <h3>Mapa de fallos acumulados</h3>
+      <p class="subtitle">Las zonas más oscuras concentran más fallos a lo largo de tus sesiones.</p>
+      <div id="error-heatmap" class="error-heatmap"></div>
+      <div id="history-list" class="history-list"></div>
+      <div class="review-actions">
+        <button type="button" id="btn-export" class="ghost">Exportar datos (JSON)</button>
+        <button type="button" id="btn-clear" class="ghost danger">Borrar historial</button>
+        <button type="button" id="btn-back-config" class="primary">Volver al inicio</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
