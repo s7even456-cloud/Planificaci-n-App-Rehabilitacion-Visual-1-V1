@@ -4,6 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Rehabilitación Visual</title>
+  <script>
+    /* Reportero de errores TEMPRANO: se define antes que el script principal,
+       así captura incluso errores de sintaxis de ese script en navegadores
+       antiguos y los muestra en pantalla (en el móvil no se ve la consola). */
+    window.__showFatal = function (msg) {
+      var bar = document.getElementById("err-bar");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "err-bar";
+        bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;" +
+          "background:#c0392b;color:#fff;font:13px system-ui;padding:10px 14px;white-space:pre-wrap";
+        (document.body || document.documentElement).appendChild(bar);
+      }
+      bar.textContent = "Error: " + msg;
+    };
+    window.onerror = function (message, source, lineno, colno) {
+      window.__showFatal(message + " [línea " + lineno + (colno ? ":" + colno : "") + "]");
+      return false;
+    };
+    // Si el JavaScript se ejecuta, retira el aviso "JS desactivado".
+    document.addEventListener("DOMContentLoaded", function () {
+      var jc = document.getElementById("js-check");
+      if (jc && jc.parentNode) jc.parentNode.removeChild(jc);
+    });
+</script>
   <style>
 /* =====================================================================
    Rehabilitación Visual — estilos
@@ -311,6 +336,12 @@ button.link {
 </style>
 </head>
 <body>
+  <!-- Aviso que solo permanece visible si el navegador NO ejecuta JavaScript
+       (p. ej. al abrir el archivo con un visor en lugar de con Chrome). -->
+  <div id="js-check" style="position:fixed;left:0;right:0;top:0;z-index:99999;background:#b8860b;color:#fff;font:14px system-ui;padding:12px 16px;">
+    ⚠ Este visor no está ejecutando JavaScript. Abre el archivo <b>index.html</b> con <b>Google Chrome</b> (Menú ⋮ → “Abrir con” → Chrome).
+  </div>
+
   <!-- ===================== PANTALLA: CONFIGURACIÓN ===================== -->
   <section id="screen-config" class="screen active">
     <div class="panel">
@@ -547,7 +578,7 @@ button.link {
 
   function loadSessions() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+    catch (e) { return []; }
   }
   function saveSessions(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
 
@@ -579,7 +610,7 @@ button.link {
       gain.gain.exponentialRampToValueAtTime(0.0001, t + durationMs / 1000);
       osc.connect(gain).connect(audioCtx.destination);
       osc.start(t); osc.stop(t + durationMs / 1000);
-    } catch { /* audio no disponible */ }
+    } catch (e) { /* audio no disponible */ }
   }
   const sndOk = () => tone(660, 150, "sine", 0.18);
   const sndFail = () => tone(180, 240, "triangle", 0.20);
@@ -890,11 +921,16 @@ button.link {
   }
 
   // ---- Cámara (vista previa; análisis IA = mejora futura) ----
-  async function enableCamera() {
+  function enableCamera() {
     try {
-      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const v = $("#cam-preview"); v.srcObject = camStream; v.classList.remove("hidden");
-    } catch { console.warn("No se pudo acceder a la cámara."); }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(function (stream) {
+          camStream = stream;
+          const v = $("#cam-preview"); v.srcObject = camStream; v.classList.remove("hidden");
+        })
+        .catch(function () { console.warn("No se pudo acceder a la cámara."); });
+    } catch (e) { console.warn("Cámara no disponible."); }
   }
   function disableCamera() {
     if (camStream) { camStream.getTracks().forEach((t) => t.stop()); camStream = null; }
@@ -1217,28 +1253,13 @@ button.link {
     URL.revokeObjectURL(url);
   }
 
-  // Muestra una franja visible si ocurre cualquier error no controlado
-  // (útil para diagnosticar en móviles donde no se ve la consola).
-  window.addEventListener("error", (ev) => {
-    let bar = document.getElementById("err-bar");
-    if (!bar) {
-      bar = document.createElement("div");
-      bar.id = "err-bar";
-      bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;" +
-        "background:#c0392b;color:#fff;font:13px system-ui;padding:10px 14px;";
-      document.body.appendChild(bar);
-    }
-    bar.textContent = "Error: " + (ev.message || ev.error) +
-      (ev.filename ? " (" + ev.filename.split("/").pop() + ":" + ev.lineno + ")" : "");
-  });
-
   function init() {
     try {
       bindUI();
       showScreen("#screen-config");
     } catch (e) {
       console.error(e);
-      window.dispatchEvent(new ErrorEvent("error", { message: e.message, error: e }));
+      if (window.__showFatal) window.__showFatal(e.message);
     }
   }
 
