@@ -12,8 +12,10 @@
     <div class="panel">
       <h1>Rehabilitación Visual</h1>
       <p class="subtitle">
-        Fija la mirada en la figura central mientras aparecen estímulos en la periferia.
-        Cubre cada estímulo con un gomet y pulsa <kbd>Espacio</kbd> para continuar.
+        Fija la mirada en la figura central. Cuando percibas un estímulo en la
+        periferia, márcalo: en PC con un <strong>clic</strong> y en pantallas
+        táctiles <strong>tocando</strong> el lugar. Aparecerá un círculo (gomet
+        digital) y pasarás al siguiente estímulo.
       </p>
 
       <form id="config-form">
@@ -26,11 +28,10 @@
           </label>
 
           <label class="field">
-            <span>Tipo de estímulo</span>
-            <select id="cfg-stimulus-type">
-              <option value="x-red">Equis roja</option>
-              <option value="dot-red">Punto rojo</option>
-              <option value="dot-black">Punto negro</option>
+            <span>Forma del estímulo</span>
+            <select id="cfg-stim-shape">
+              <option value="x">Equis (✕)</option>
+              <option value="circle">Círculo de control</option>
             </select>
           </label>
 
@@ -45,9 +46,9 @@
 
           <label class="field">
             <span>Forma central</span>
-            <select id="cfg-center-type">
-              <option value="cross-black">Cruz negra</option>
-              <option value="dot-black">Punto negro</option>
+            <select id="cfg-center-shape">
+              <option value="cross">Cruz</option>
+              <option value="dot">Punto</option>
             </select>
           </label>
 
@@ -58,18 +59,62 @@
         </fieldset>
 
         <fieldset>
-          <legend>Opciones</legend>
+          <legend>Colores</legend>
+          <div class="color-grid">
+            <label class="color-field">
+              <input type="color" id="cfg-color-center" value="#000000" />
+              <span>Figura central</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="cfg-color-stim" value="#d62828" />
+              <span>Estímulo (X/círculo)</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="cfg-color-gomet" value="#1f6feb" />
+              <span>Gomet (tu marca)</span>
+            </label>
+            <label class="color-field">
+              <input type="color" id="cfg-color-cursor" value="#ff8c00" />
+              <span>Cursor</span>
+            </label>
+          </div>
+        </fieldset>
 
-          <label class="field-inline">
-            <input type="checkbox" id="cfg-sound" checked />
-            <span>Señal acústica de feedback</span>
+        <fieldset>
+          <legend>Interacción y marcado</legend>
+
+          <label class="field">
+            <span>Modo de interacción</span>
+            <select id="cfg-mode">
+              <option value="auto">Automático (detectar dispositivo)</option>
+              <option value="pc">PC / ratón (cursor + clic)</option>
+              <option value="touch">Táctil (tocar con el dedo)</option>
+            </select>
           </label>
 
+          <label class="field">
+            <span>Exigencia de precisión: <output id="out-tolerance">Normal</output></span>
+            <input type="range" id="cfg-tolerance" min="0.5" max="2.5" step="0.1" value="1.0" />
+            <small class="hint-text">A mayor exigencia, menos margen entre tu marca y el estímulo para contar como acierto.</small>
+          </label>
+
+          <label class="field">
+            <span>Mostrar botón “No la veo” tras: <output id="out-skip-delay">4</output> s</span>
+            <input type="range" id="cfg-skip-delay" min="1" max="15" step="1" value="4" />
+            <small class="hint-text">Aparece en una posición distinta cada vez y se activa con doble clic / doble toque.</small>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Opciones</legend>
+          <label class="field-inline">
+            <input type="checkbox" id="cfg-sound" checked />
+            <span>Señal acústica de feedback (acierto / fallo)</span>
+          </label>
           <label class="field-inline">
             <input type="checkbox" id="cfg-adaptive" checked />
             <span>Adaptativo: reforzar zonas con más fallos</span>
           </label>
-
           <label class="field-inline">
             <input type="checkbox" id="cfg-camera" />
             <span>Supervisión por cámara (vista previa)</span>
@@ -86,28 +131,28 @@
   <!-- ===================== PANTALLA: EJERCICIO ===================== -->
   <section id="screen-exercise" class="screen">
     <div id="stage" class="stage">
-      <!-- figura central y estímulo se inyectan aquí -->
+      <!-- figura central, estímulos y gomets se inyectan aquí -->
+      <div id="cursor-ring" class="cursor-ring hidden"></div>
     </div>
+    <div id="skip-layer" class="skip-layer hidden"></div>
     <div id="exercise-hud" class="hud">
       <span id="hud-progress">0 / 0</span>
-      <span class="hud-hint">Pulsa <kbd>Espacio</kbd> tras cubrir el estímulo · <kbd>Esc</kbd> salir</span>
+      <span class="hud-hint" id="hud-hint">Marca el estímulo que percibas · <kbd>Esc</kbd> salir</span>
     </div>
     <video id="cam-preview" class="cam-preview hidden" autoplay muted playsinline></video>
   </section>
 
-  <!-- ===================== PANTALLA: REVISIÓN ===================== -->
-  <section id="screen-review" class="screen">
+  <!-- ===================== PANTALLA: RESULTADO (dashboard editable) ===================== -->
+  <section id="screen-result" class="screen">
     <div class="panel wide">
-      <h2>Revisión de la sesión</h2>
+      <h2>Resultado de la sesión</h2>
       <p class="subtitle">
-        Marca cada estímulo según si lo cubriste correctamente con el gomet.
-        Toca un punto para alternar entre <strong class="ok">acierto</strong> y
-        <strong class="fail">fallo</strong>.
+        Puntuación automática según la distancia entre tu marca y cada estímulo.
+        Puedes <strong>corregir</strong> cualquier juicio tocando su línea en el mapa.
       </p>
-      <div id="review-map" class="review-map"></div>
+      <div id="result-dashboard"></div>
       <div class="review-actions">
-        <button type="button" id="btn-all-ok" class="ghost">Todos acierto</button>
-        <button type="button" id="btn-all-fail" class="ghost">Todos fallo</button>
+        <button type="button" id="btn-discard" class="ghost danger">Descartar</button>
         <button type="button" id="btn-save-session" class="primary">Guardar resultados</button>
       </div>
     </div>
@@ -124,11 +169,24 @@
       <h3>Mapa de fallos acumulados</h3>
       <p class="subtitle">Las zonas más oscuras concentran más fallos a lo largo de tus sesiones.</p>
       <div id="error-heatmap" class="error-heatmap"></div>
+      <h3>Sesiones (selecciona una para ver su dashboard)</h3>
       <div id="history-list" class="history-list"></div>
       <div class="review-actions">
         <button type="button" id="btn-export" class="ghost">Exportar datos (JSON)</button>
         <button type="button" id="btn-clear" class="ghost danger">Borrar historial</button>
         <button type="button" id="btn-back-config" class="primary">Volver al inicio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: DETALLE DE SESIÓN (dashboard histórico) ===================== -->
+  <section id="screen-detail" class="screen">
+    <div class="panel wide">
+      <h2 id="detail-title">Dashboard de la sesión</h2>
+      <p class="subtitle" id="detail-subtitle"></p>
+      <div id="detail-dashboard"></div>
+      <div class="review-actions">
+        <button type="button" id="btn-detail-back" class="primary">Volver al historial</button>
       </div>
     </div>
   </section>
