@@ -8,10 +8,12 @@ acierto/fallo según la distancia entre tu marca y el estímulo. Registra tu
 evolución sesión a sesión.
 
 Está construida con HTML, CSS y JavaScript puro (sin dependencias ni paso de
-compilación), por lo que funciona en cualquier navegador de PC, tablet o
-smartphone. El diseño es **totalmente responsivo**: todo se dimensiona de forma
-proporcional a la pantalla, así que se adapta a cualquier resolución
-(1920×1080, 1366×768, 4K, ultrawide, móvil, etc.) sin píxeles fijos.
+compilación) y se entrega como **un único archivo `index.html` autocontenido**
+(el CSS y el JavaScript van incrustados), por lo que basta con descargar ese
+archivo y abrirlo: funciona en cualquier navegador de PC, tablet o smartphone.
+El diseño es **totalmente responsivo**: todo se dimensiona de forma proporcional
+a la pantalla, así que se adapta a cualquier resolución (1920×1080, 1366×768,
+4K, ultrawide, móvil, etc.) sin píxeles fijos.
 
 ## Cómo usarla
 
@@ -80,9 +82,7 @@ Atajo durante el ejercicio: `Esc` sale.
 
 | Archivo | Descripción |
 |---|---|
-| `index.html` | Pantallas: configuración, ejercicio, resultado, historial y detalle. |
-| `styles.css` | Estilos responsivos; fondo suave; figuras, gomets, cursor y dashboards. |
-| `app.js` | Lógica: posiciones, marcado clic/táctil, puntuación, audio, historial y gráficos. |
+| `index.html` | **Archivo único autocontenido**: pantallas, estilos y lógica (CSS y JS incrustados). Es lo único que necesitas para usar la app. |
 
 ## Privacidad
 
