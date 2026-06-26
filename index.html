@@ -211,28 +211,26 @@ button.link {
   left: -100px; top: -100px;
 }
 
-/* Botones "No la veo": aparecen tras un tiempo, varios a la vez en el
-   perímetro de la pantalla, para que el usuario active el que perciba. */
-.skip-layer {
+/* Franja "No la veo": un único marco alrededor de TODO el borde de la pantalla.
+   Aparece tras un tiempo y se activa con doble clic / doble toque en cualquier
+   punto de la franja. El centro queda libre para marcar si se percibe la X. */
+.skip-frame {
   position: fixed; inset: 0; z-index: 6; pointer-events: none;
-}
-.skip-btn {
-  position: fixed;
-  pointer-events: auto;
-  z-index: 6;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2px solid var(--accent);
-  color: var(--accent);
-  font-weight: 700;
-  padding: 10px 16px;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+  --frame: clamp(56px, 11vmin, 120px);
   animation: skip-in 0.25s ease;
-  cursor: pointer;
 }
-.skip-btn small { font-weight: 500; font-size: 0.7rem; color: var(--ink-soft); margin-top: 2px; }
-@keyframes skip-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+.skip-edge {
+  position: fixed; pointer-events: auto; cursor: pointer;
+  background: rgba(47, 111, 94, 0.86);
+  color: #fff; font-weight: 700; font-size: clamp(0.8rem, 2vw, 1rem);
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: 0.3px; text-align: center;
+}
+.skip-edge.top    { top: 0;    left: 0; right: 0; height: var(--frame); }
+.skip-edge.bottom { bottom: 0; left: 0; right: 0; height: var(--frame); }
+.skip-edge.left   { left: 0;  top: var(--frame); bottom: var(--frame); width: var(--frame); }
+.skip-edge.right  { right: 0; top: var(--frame); bottom: var(--frame); width: var(--frame); }
+@keyframes skip-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* HUD del ejercicio */
 .hud {
@@ -331,6 +329,11 @@ button.link {
 .history-row:hover { background: #f6f9f7; border-color: var(--accent); }
 .history-row .pct { font-weight: 700; }
 .history-row .go { color: var(--accent); font-size: 0.85rem; }
+.history-row .row-del {
+  border: 1px solid #e6c3bd; background: #fff; color: var(--fail);
+  border-radius: 8px; padding: 6px 10px; font-size: 0.9rem; line-height: 1;
+}
+.history-row .row-del:hover { background: #fbecea; }
 .empty { color: var(--ink-soft); font-style: italic; padding: 12px 0; }
 
 </style>
@@ -434,9 +437,15 @@ button.link {
           </label>
 
           <label class="field">
-            <span>Mostrar botón “No la veo” tras: <output id="out-skip-delay">4</output> s</span>
+            <span>Tiempo de visualización tras marcar: <output id="out-view-time">1.5</output> s</span>
+            <input type="range" id="cfg-view-time" min="0.3" max="5" step="0.1" value="1.5" />
+            <small class="hint-text">Tras tu marca, la X y tu gomet siguen visibles este tiempo (para ver el resultado y retirar la mano) y luego desaparecen para dar paso a la siguiente.</small>
+          </label>
+
+          <label class="field">
+            <span>Mostrar franja “No la veo” tras: <output id="out-skip-delay">4</output> s</span>
             <input type="range" id="cfg-skip-delay" min="1" max="15" step="1" value="4" />
-            <small class="hint-text">Aparece en una posición distinta cada vez y se activa con doble clic / doble toque.</small>
+            <small class="hint-text">Aparece una franja alrededor de todo el borde de la pantalla; se activa con doble clic / doble toque en cualquier punto de ella.</small>
           </label>
         </fieldset>
 
@@ -469,7 +478,12 @@ button.link {
       <!-- figura central, estímulos y gomets se inyectan aquí -->
       <div id="cursor-ring" class="cursor-ring hidden"></div>
     </div>
-    <div id="skip-layer" class="skip-layer hidden"></div>
+    <div id="skip-frame" class="skip-frame hidden" aria-label="No la veo">
+      <div class="skip-edge top">No la veo · doble toque</div>
+      <div class="skip-edge bottom">No la veo · doble toque</div>
+      <div class="skip-edge left"></div>
+      <div class="skip-edge right"></div>
+    </div>
     <div id="exercise-hud" class="hud">
       <span id="hud-progress">0 / 0</span>
       <span class="hud-hint" id="hud-hint">Marca el estímulo que percibas · <kbd>Esc</kbd> salir</span>
@@ -552,18 +566,10 @@ button.link {
   const DBLTAP_MS = 450;   // ventana para doble clic / doble toque
 
   let session = null;      // sesión en curso
-  let skipTimer = null;    // temporizador de los botones "No la veo"
+  let skipTimer = null;    // temporizador de la franja "No la veo"
+  let viewTimer = null;    // temporizador del tiempo de visualización tras marcar
+  let locked = false;      // bloquea nuevas marcas durante el tiempo de visualización
   let lastSkipTap = 0;     // instante de la última pulsación (doble activación)
-  let lastSkipEl = null;   // botón de la última pulsación (doble activación)
-
-  // Anclas en el PERÍMETRO de la pantalla (esquinas y centros de los bordes),
-  // para no solaparse con las cruces/círculos ni con los gomets del interior.
-  const SKIP_ANCHORS = [
-    { edge: "top",    left: "15%" }, { edge: "top",    left: "50%" }, { edge: "top",    left: "85%" },
-    { edge: "bottom", left: "15%" }, { edge: "bottom", left: "50%" }, { edge: "bottom", left: "85%" },
-    { edge: "left",   top: "35%"  }, { edge: "left",   top: "65%"  },
-    { edge: "right",  top: "35%"  }, { edge: "right",  top: "65%"  },
-  ];
 
   // =====================================================================
   //  Utilidades
@@ -618,9 +624,18 @@ button.link {
   // =====================================================================
   //  Generación de posiciones (sin solape, con refuerzo adaptativo)
   // =====================================================================
+  // Grosor de la franja "No la veo" en píxeles (debe coincidir con el CSS).
+  function frameThicknessPx() {
+    return clamp(0.11 * Math.min(window.innerWidth, window.innerHeight), 56, 120);
+  }
+
   function generatePositions(count, stimSizePct, adaptive) {
     const positions = [];
-    const margin = stimSizePct;
+    // Margen por eje: deja fuera la banda perimetral (para que la franja
+    // "No la veo" nunca tape un estímulo) más el radio del propio estímulo.
+    const fpx = frameThicknessPx();
+    const marginX = stimSizePct + (fpx / window.innerWidth) * 100;
+    const marginY = stimSizePct + (fpx / window.innerHeight) * 100;
     const minDist = stimSizePct * 1.6;
     const centerKeepout = 12 + stimSizePct;
     const weights = adaptive ? adaptiveWeights() : null;
@@ -637,16 +652,16 @@ button.link {
         } else {
           x = Math.random() * 100; y = Math.random() * 100;
         }
-        x = clamp(x, margin, 100 - margin);
-        y = clamp(y, margin, 100 - margin);
+        x = clamp(x, marginX, 100 - marginX);
+        y = clamp(y, marginY, 100 - marginY);
         if (Math.hypot(x - 50, y - 50) < centerKeepout) continue;
         if (positions.some((p) => Math.hypot(p.x - x, p.y - y) < minDist)) continue;
         placed = { x, y }; break;
       }
       if (!placed) {
         placed = {
-          x: clamp(Math.random() * 100, margin, 100 - margin),
-          y: clamp(Math.random() * 100, margin, 100 - margin),
+          x: clamp(Math.random() * 100, marginX, 100 - marginX),
+          y: clamp(Math.random() * 100, marginY, 100 - marginY),
         };
       }
       positions.push(placed);
@@ -748,7 +763,14 @@ button.link {
     stage.appendChild(fix);
   }
 
+  // Quita de la pantalla el estímulo y el gomet actuales (no se acumulan).
+  function clearStageMarks() {
+    $("#stage").querySelectorAll(".stimulus, .gomet").forEach((e) => e.remove());
+  }
+
   function showStimulus(index) {
+    clearStageMarks();           // la marca anterior ya no debe verse
+    locked = false;              // se admite una nueva marca
     const st = session.stimuli[index];
     st.shownAt = performance.now();
 
@@ -768,7 +790,7 @@ button.link {
     $("#stage").appendChild(el);
 
     $("#hud-progress").textContent = `${index + 1} / ${session.stimuli.length}`;
-    armSkipButtons();
+    armSkipFrame();
   }
 
   function onPointerMove(e) {
@@ -779,13 +801,16 @@ button.link {
   }
 
   function onPointerDown(e) {
-    // Ignorar si se pulsa el botón "No la veo" (tiene su propio manejador).
-    if (e.target.closest(".skip-btn")) return;
+    // Ignorar pulsaciones sobre la franja "No la veo" (tiene su propio manejador)
+    // o si estamos en el tiempo de visualización tras una marca.
+    if (e.target.closest(".skip-edge")) return;
+    if (locked) return;
     e.preventDefault();
     placeMark(e.clientX, e.clientY);
   }
 
-  // Coloca un gomet en (clientX, clientY), puntúa y avanza.
+  // Coloca un gomet en (clientX, clientY), puntúa y, tras el tiempo de
+  // visualización configurable, oculta la X y el gomet y pasa al siguiente.
   function placeMark(clientX, clientY) {
     const idx = session.current;
     const st = session.stimuli[idx];
@@ -809,9 +834,15 @@ button.link {
     st.skipped = false;
     st.hit = st.dist <= session.config.tolerance;
 
+    locked = true;            // no admitir más marcas hasta el siguiente estímulo
+    clearSkipTimer();
+    hideSkipFrame();
     drawGomet(markXpct, markYpct);
     st.hit ? sndOk() : sndFail();
-    advance();
+
+    // La X y el gomet siguen visibles un tiempo (retirar la mano) y luego pasan.
+    clearViewTimer();
+    viewTimer = setTimeout(advance, session.config.viewTime * 1000);
   }
 
   function drawGomet(xPct, yPct) {
@@ -828,7 +859,8 @@ button.link {
 
   function advance() {
     clearSkipTimer();
-    hideSkipButtons();
+    clearViewTimer();
+    hideSkipFrame();
     session.current++;
     if (session.current >= session.stimuli.length) endExercise();
     else showStimulus(session.current);
@@ -844,52 +876,36 @@ button.link {
     }
   }
 
-  // ---- Botones "No la veo" (aparecen tras un tiempo, varios en el perímetro, doble pulsación) ----
-  function armSkipButtons() {
+  // ---- Franja "No la veo" (marco perimetral; aparece tras un tiempo; doble pulsación) ----
+  function armSkipFrame() {
     clearSkipTimer();
-    hideSkipButtons();
+    hideSkipFrame();
     const delay = session.config.skipDelay * 1000;
-    skipTimer = setTimeout(showSkipButtons, delay);
+    skipTimer = setTimeout(showSkipFrame, delay);
   }
   function clearSkipTimer() { if (skipTimer) { clearTimeout(skipTimer); skipTimer = null; } }
+  function clearViewTimer() { if (viewTimer) { clearTimeout(viewTimer); viewTimer = null; } }
 
-  function showSkipButtons() {
-    const layer = $("#skip-layer");
-    layer.innerHTML = "";
-    const inset = "10px";
-    SKIP_ANCHORS.forEach((a) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "skip-btn";
-      btn.innerHTML = 'No la veo<small>doble clic</small>';
-      // Pegar el botón al borde correspondiente, centrado en el eje libre.
-      if (a.edge === "top")    { btn.style.top = inset;  btn.style.left = a.left; btn.style.transform = "translateX(-50%)"; }
-      if (a.edge === "bottom") { btn.style.bottom = inset; btn.style.left = a.left; btn.style.transform = "translateX(-50%)"; }
-      if (a.edge === "left")   { btn.style.left = inset; btn.style.top = a.top;  btn.style.transform = "translateY(-50%)"; }
-      if (a.edge === "right")  { btn.style.right = inset; btn.style.top = a.top;  btn.style.transform = "translateY(-50%)"; }
-      btn.addEventListener("pointerup", onSkipActivate);
-      layer.appendChild(btn);
-    });
-    layer.classList.remove("hidden");
-    lastSkipTap = 0; lastSkipEl = null;
+  function showSkipFrame() {
+    $("#skip-frame").classList.remove("hidden");
+    lastSkipTap = 0;
   }
-
-  function hideSkipButtons() {
-    const layer = $("#skip-layer");
-    layer.classList.add("hidden");
-    layer.innerHTML = "";
+  function hideSkipFrame() {
+    $("#skip-frame").classList.add("hidden");
   }
 
   function onSkipActivate(e) {
+    if (!e.target.closest(".skip-edge")) return;   // solo cuenta dentro de la franja
     e.preventDefault();
     e.stopPropagation();
     const now = Date.now();
-    // Doble clic / doble toque sobre el MISMO botón para evitar pulsaciones por error.
-    if (e.currentTarget === lastSkipEl && now - lastSkipTap < DBLTAP_MS) {
-      lastSkipTap = 0; lastSkipEl = null;
+    // Doble clic / doble toque en cualquier punto de la franja, para evitar
+    // activaciones por error.
+    if (now - lastSkipTap < DBLTAP_MS) {
+      lastSkipTap = 0;
       registerSkip();
     } else {
-      lastSkipTap = now; lastSkipEl = e.currentTarget;
+      lastSkipTap = now;
     }
   }
 
@@ -914,7 +930,8 @@ button.link {
     stage.removeEventListener("pointermove", onPointerMove);
     stage.removeEventListener("pointerdown", onPointerDown);
     document.removeEventListener("keydown", onExerciseKey);
-    clearSkipTimer(); hideSkipButtons();
+    clearSkipTimer(); clearViewTimer(); hideSkipFrame();
+    locked = false;
     disableCamera();
     stage.querySelectorAll(".fixation, .stimulus, .gomet").forEach((e) => e.remove());
     $("#cursor-ring").classList.add("hidden");
@@ -1072,6 +1089,12 @@ button.link {
     showScreen("#screen-history");
   }
 
+  function deleteSession(id) {
+    if (!confirm("¿Borrar esta sesión del historial? No se puede deshacer.")) return;
+    saveSessions(loadSessions().filter((s) => s.id !== id));
+    renderHistory();
+  }
+
   function renderHistory() {
     const list = loadSessions();
     const summary = $("#history-summary");
@@ -1105,11 +1128,18 @@ button.link {
         <span>${g.hits}/${g.total} aciertos</span>
         <span class="pct" style="color:${col}">${pct(g.accuracy)}</span>
         <span class="go">Ver dashboard ▸</span>
+        <button type="button" class="row-del" data-id="${s.id}" title="Borrar esta sesión" aria-label="Borrar esta sesión">🗑</button>
       </div>`;
     }).join("");
 
     listEl.querySelectorAll(".history-row").forEach((row) => {
       row.addEventListener("click", () => openSessionDetail(+row.dataset.id));
+    });
+    listEl.querySelectorAll(".row-del").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();              // no abrir el detalle al borrar
+        deleteSession(+btn.dataset.id);
+      });
     });
 
     drawChart(aggs.map((g) => g.accuracy));
@@ -1192,6 +1222,7 @@ button.link {
       colorCursor: $("#cfg-color-cursor").value,
       mode: $("#cfg-mode").value,
       tolerance: parseFloat($("#cfg-tolerance").value),
+      viewTime: parseFloat($("#cfg-view-time").value),
       skipDelay: parseInt($("#cfg-skip-delay").value, 10),
       sound: $("#cfg-sound").checked,
       adaptive: $("#cfg-adaptive").checked,
@@ -1219,12 +1250,16 @@ button.link {
     sync("#cfg-stim-size", "#out-stim-size", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-center-size", "#out-center-size", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-tolerance", "#out-tolerance", toleranceLabel);
+    sync("#cfg-view-time", "#out-view-time", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-skip-delay", "#out-skip-delay");
 
     $("#config-form").addEventListener("submit", (e) => {
       e.preventDefault();
       startSession(readConfig());
     });
+
+    // Franja "No la veo": doble clic / doble toque en cualquier punto del marco.
+    $("#skip-frame").addEventListener("pointerup", onSkipActivate);
 
     $("#btn-history").addEventListener("click", () => { renderHistory(); showScreen("#screen-history"); });
     $("#btn-back-config").addEventListener("click", () => showScreen("#screen-config"));

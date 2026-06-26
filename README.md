@@ -25,13 +25,18 @@ a la pantalla, así que se adapta a cualquier resolución (1920×1080, 1366×768
    - **PC / ratón:** mueve el cursor (se dibuja como un aro) y haz **clic**.
    - **Táctil:** **toca** la pantalla con el dedo en esa posición.
    Aparecerá tu gomet y pasarás automáticamente al siguiente estímulo.
-5. Si **no percibes** el estímulo, espera unos segundos: aparecerán varios
-   botones **“No la veo”** repartidos por el **perímetro** de la pantalla.
-   Activa el que veas con **doble clic / doble toque** para saltar ese estímulo.
+   Tras tu marca, la X y tu gomet permanecen visibles un **tiempo configurable**
+   (para ver el resultado y **retirar la mano**) y luego desaparecen para dar
+   paso a la siguiente: las marcas **no se acumulan**, así siempre distingues
+   la nueva.
+5. Si **no percibes** el estímulo, espera unos segundos: aparecerá una **franja
+   “No la veo”** alrededor de todo el borde de la pantalla. Actívala con
+   **doble clic / doble toque** en cualquier punto de ella para saltar.
 6. Al terminar verás el **dashboard de la sesión** (puntuación automática). Puedes
    **corregir** cualquier juicio tocando su marca, y pulsar **Guardar resultados**.
 7. Consulta tu **Historial y evolución**; selecciona cualquier fecha para abrir
-   de nuevo el **dashboard completo de esa prueba** y comparar tu progreso.
+   de nuevo el **dashboard completo de esa prueba** y comparar tu progreso. Puedes
+   **borrar una sesión concreta** (🗑) o todo el historial.
 
 Atajo durante el ejercicio: `Esc` sale.
 
@@ -46,17 +51,20 @@ Atajo durante el ejercicio: `Esc` sale.
   - **Modo de interacción**: automático (detecta el dispositivo), PC o táctil.
   - **Exigencia de precisión** ajustable: define cuánto margen entre tu marca y
     el estímulo cuenta como acierto.
-  - Tiempo tras el cual aparecen los botones **“No la veo”**.
+  - **Tiempo de visualización** tras marcar (cuánto siguen visibles la X y el
+    gomet antes de pasar al siguiente).
+  - Tiempo tras el cual aparece la franja **“No la veo”**.
 - **Ejercicio**
   - Estímulos uno a uno, en posiciones aleatorias **sin solaparse** entre sí ni
-    invadir la zona central.
-  - Tanto los **estímulos** como los **gomets** colocados **permanecen fijos**
-    hasta el final de la prueba (se van acumulando en pantalla).
+    invadir la zona central, y siempre dentro del área útil (no bajo la franja).
+  - **Sin acumulación**: tras marcar, la X y el gomet se muestran un tiempo
+    configurable y luego desaparecen, de modo que la nueva marca siempre se
+    distingue y te da tiempo a retirar la mano sin taparla.
   - En PC, el **cursor** se dibuja como un aro semitransparente del tamaño del
     gomet; el gomet colocado es un círculo relleno y opaco.
-  - Botones **“No la veo”** simultáneos en el **perímetro** (para que, sea cual
-    sea la zona afectada del usuario, al menos uno sea visible), con activación
-    por **doble clic / doble toque** para evitar pulsaciones por error.
+  - Franja **“No la veo”** alrededor de todo el borde de la pantalla (para que,
+    sea cual sea la zona afectada del usuario, siempre quede accesible), con
+    activación por **doble clic / doble toque** para evitar pulsaciones por error.
   - Fondo claro y suave para no fatigar la vista.
   - **Señal acústica** de feedback inmediato (acierto / fallo) vía Web Audio API.
 - **Puntuación automática**
@@ -72,7 +80,8 @@ Atajo durante el ejercicio: `Esc` sale.
   - **Mapa de calor de fallos** acumulados por zonas de la pantalla.
   - **Histórico de dashboards**: cada fecha es seleccionable y reabre el
     dashboard completo de esa prueba concreta.
-  - Exportar el historial a JSON / borrarlo.
+  - **Borrado selectivo**: elimina una sesión concreta (🗑) o todo el historial.
+  - Exportar el historial a JSON.
 - **Refuerzo adaptativo** (opcional): las próximas sesiones aumentan la
   frecuencia de estímulos en las zonas donde más se falla.
 - **Supervisión por cámara** (opcional): vista previa de webcam durante el
