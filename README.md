@@ -42,6 +42,10 @@ Atajo durante el ejercicio: `Esc` sale.
 
 ## Funcionalidades
 
+- **Distancia de uso recomendada**
+  - Según el tamaño de pantalla detectado (ajustable), recomienda la distancia
+    óptima ojo–pantalla: la mínima prudente que no fatiga la vista y a la vez
+    abarca el mayor campo visual posible. Muestra el campo visual estimado (°).
 - **Configuración por sesión**
   - Número de estímulos (1–60).
   - Forma del estímulo: **equis (✕)** o **círculo de control**, con tamaño regulable.
@@ -62,9 +66,10 @@ Atajo durante el ejercicio: `Esc` sale.
     distingue y te da tiempo a retirar la mano sin taparla.
   - En PC, el **cursor** se dibuja como un aro semitransparente del tamaño del
     gomet; el gomet colocado es un círculo relleno y opaco.
-  - Franja **“No la veo”** alrededor de todo el borde de la pantalla (para que,
-    sea cual sea la zona afectada del usuario, siempre quede accesible), con
-    activación por **doble clic / doble toque** para evitar pulsaciones por error.
+  - Franja **“No la veo”** alrededor de todo el borde de la pantalla, con el
+    mensaje en los cuatro lados (para que, sea cual sea la zona afectada del
+    usuario, siempre quede accesible y visible), con activación por **doble
+    clic / doble toque** para evitar pulsaciones por error.
   - Fondo claro y suave para no fatigar la vista.
   - **Señal acústica** de feedback inmediato (acierto / fallo) vía Web Audio API.
 - **Puntuación automática**
@@ -77,9 +82,12 @@ Atajo durante el ejercicio: `Esc` sale.
 - **Registro y evolución**
   - Cada sesión se guarda localmente (`localStorage`).
   - Gráfico de evolución de la precisión y estadísticas globales.
-  - **Mapa de calor de fallos** acumulados por zonas de la pantalla.
+  - **Mapa de calor de fallos** por zonas, **seleccionable** entre *acumulado*
+    (todas las sesiones) y la *sesión* concreta. En el resultado de cada sesión
+    puedes ver su propio mapa o el acumulado.
   - **Histórico de dashboards**: cada fecha es seleccionable y reabre el
-    dashboard completo de esa prueba concreta.
+    dashboard completo de esa prueba concreta, mostrando **dos mapas de fallos**:
+    el de esa sesión y el **acumulado hasta esa sesión**.
   - **Borrado selectivo**: elimina una sesión concreta (🗑) o todo el historial.
   - Exportar el historial a JSON.
 - **Refuerzo adaptativo** (opcional): las próximas sesiones aumentan la

@@ -120,6 +120,19 @@ kbd {
   border-radius: 6px; padding: 1px 7px; font-size: 0.85em; font-family: inherit;
 }
 
+/* Panel de distancia recomendada */
+.dist-reco {
+  background: linear-gradient(135deg, #eef5f2, #f7faf8);
+  border: 1px solid #cfe3db; border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.dist-reco .big {
+  font-size: clamp(1.2rem, 3vw, 1.6rem); font-weight: 800; color: var(--accent);
+  display: flex; align-items: center; gap: 8px;
+}
+.dist-reco .fov { margin-top: 4px; font-size: 0.92rem; color: var(--ink); }
+.dist-reco .why { margin-top: 6px; font-size: 0.82rem; color: var(--ink-soft); line-height: 1.45; }
+
 /* Selectores de color */
 .color-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;
@@ -216,21 +229,46 @@ button.link {
    punto de la franja. El centro queda libre para marcar si se percibe la X. */
 .skip-frame {
   position: fixed; inset: 0; z-index: 6; pointer-events: none;
-  --frame: clamp(56px, 11vmin, 120px);
-  animation: skip-in 0.25s ease;
+  --frame: clamp(58px, 12vmin, 128px);
+  animation: skip-in 0.28s ease;
 }
 .skip-edge {
   position: fixed; pointer-events: auto; cursor: pointer;
-  background: rgba(47, 111, 94, 0.86);
-  color: #fff; font-weight: 700; font-size: clamp(0.8rem, 2vw, 1rem);
+  color: #fff;
   display: flex; align-items: center; justify-content: center;
-  letter-spacing: 0.3px; text-align: center;
+  background: linear-gradient(135deg, #2f6f5e 0%, #3f8f76 55%, #2f6f5e 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.30),
+              0 0 18px rgba(47, 111, 94, 0.35);
+  animation: skip-glow 1.8s ease-in-out infinite;
 }
 .skip-edge.top    { top: 0;    left: 0; right: 0; height: var(--frame); }
 .skip-edge.bottom { bottom: 0; left: 0; right: 0; height: var(--frame); }
 .skip-edge.left   { left: 0;  top: var(--frame); bottom: var(--frame); width: var(--frame); }
 .skip-edge.right  { right: 0; top: var(--frame); bottom: var(--frame); width: var(--frame); }
+
+.skip-label {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+  font-size: clamp(0.72rem, 1.8vw, 0.98rem);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+.skip-ico {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.7em; height: 1.7em; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  font-size: 1.05em; font-weight: 700;
+}
+/* En los laterales el texto se escribe en vertical */
+.skip-edge.left .skip-label,
+.skip-edge.right .skip-label { writing-mode: vertical-rl; }
+.skip-edge.left .skip-label { transform: rotate(180deg); }
+
 @keyframes skip-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes skip-glow {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.12); }
+}
 
 /* HUD del ejercicio */
 .hud {
@@ -319,6 +357,17 @@ button.link {
 }
 .heat-cell { border: 0.5px solid rgba(0,0,0,0.04); }
 
+/* Selector de mapa (acumulado / sesión) */
+.heat-toggle { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 10px; }
+.seg {
+  border: 1px solid var(--border); background: #fff; color: var(--ink);
+  padding: 8px 14px; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
+}
+.seg.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.heatmap-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.heatmap-cap { font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; margin-bottom: 6px; }
+@media (max-width: 560px) { .heatmap-pair { grid-template-columns: 1fr; } }
+
 .history-list { margin-top: 8px; }
 .history-row {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -357,6 +406,16 @@ button.link {
       </p>
 
       <form id="config-form">
+        <fieldset>
+          <legend>Distancia de uso recomendada</legend>
+          <div id="dist-reco" class="dist-reco"></div>
+          <label class="field">
+            <span>Diagonal real de tu pantalla: <output id="out-screen-diag">—</output> ″</span>
+            <input type="range" id="cfg-screen-diag" min="3" max="32" step="0.1" value="6.5" />
+            <small class="hint-text">Detectada de forma aproximada. <b>Ajústala</b> al tamaño real de tu pantalla (en pulgadas) para que la recomendación sea precisa.</small>
+          </label>
+        </fieldset>
+
         <fieldset>
           <legend>Estímulos</legend>
 
@@ -479,10 +538,10 @@ button.link {
       <div id="cursor-ring" class="cursor-ring hidden"></div>
     </div>
     <div id="skip-frame" class="skip-frame hidden" aria-label="No la veo">
-      <div class="skip-edge top">No la veo · doble toque</div>
-      <div class="skip-edge bottom">No la veo · doble toque</div>
-      <div class="skip-edge left"></div>
-      <div class="skip-edge right"></div>
+      <div class="skip-edge top"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
+      <div class="skip-edge bottom"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
+      <div class="skip-edge left"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
+      <div class="skip-edge right"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
     </div>
     <div id="exercise-hud" class="hud">
       <span id="hud-progress">0 / 0</span>
@@ -500,6 +559,12 @@ button.link {
         Puedes <strong>corregir</strong> cualquier juicio tocando su línea en el mapa.
       </p>
       <div id="result-dashboard"></div>
+      <h3>Mapa de fallos</h3>
+      <div class="heat-toggle" id="result-heat-toggle">
+        <button type="button" class="seg" data-mode="one">Esta sesión</button>
+        <button type="button" class="seg" data-mode="acc">Acumulado</button>
+      </div>
+      <div id="result-heatmap" class="error-heatmap"></div>
       <div class="review-actions">
         <button type="button" id="btn-discard" class="ghost danger">Descartar</button>
         <button type="button" id="btn-save-session" class="primary">Guardar resultados</button>
@@ -515,8 +580,12 @@ button.link {
       <div class="chart-wrap">
         <canvas id="evolution-chart" width="800" height="280"></canvas>
       </div>
-      <h3>Mapa de fallos acumulados</h3>
-      <p class="subtitle">Las zonas más oscuras concentran más fallos a lo largo de tus sesiones.</p>
+      <h3>Mapa de fallos</h3>
+      <div class="heat-toggle" id="hist-heat-toggle">
+        <button type="button" class="seg" data-mode="acc">Acumulado (todas)</button>
+        <button type="button" class="seg" data-mode="last">Última sesión</button>
+      </div>
+      <p class="subtitle">Las zonas más oscuras concentran más fallos.</p>
       <div id="error-heatmap" class="error-heatmap"></div>
       <h3>Sesiones (selecciona una para ver su dashboard)</h3>
       <div id="history-list" class="history-list"></div>
@@ -534,6 +603,17 @@ button.link {
       <h2 id="detail-title">Dashboard de la sesión</h2>
       <p class="subtitle" id="detail-subtitle"></p>
       <div id="detail-dashboard"></div>
+      <h3>Mapa de fallos</h3>
+      <div class="heatmap-pair">
+        <div>
+          <div class="heatmap-cap">Esta sesión</div>
+          <div id="detail-heat-one" class="error-heatmap"></div>
+        </div>
+        <div>
+          <div class="heatmap-cap">Acumulado hasta esta sesión</div>
+          <div id="detail-heat-acc" class="error-heatmap"></div>
+        </div>
+      </div>
       <div class="review-actions">
         <button type="button" id="btn-detail-back" class="primary">Volver al historial</button>
       </div>
@@ -922,6 +1002,11 @@ button.link {
     cleanupExercise();
     pendingRecord = buildRecord(session);
     renderDashboard($("#result-dashboard"), pendingRecord, true);
+    // Selector del mapa de fallos: esta sesión o acumulado (guardadas + esta).
+    wireHeatToggle($("#result-heat-toggle"), $("#result-heatmap"), {
+      one: () => [pendingRecord],
+      acc: () => loadSessions().concat([pendingRecord]),
+    }, "one");
     showScreen("#screen-result");
   }
 
@@ -1103,7 +1188,7 @@ button.link {
     if (!list.length) {
       summary.innerHTML = '<p class="empty">Aún no hay sesiones guardadas.</p>';
       listEl.innerHTML = "";
-      drawChart([]); renderHeatmap([]);
+      drawChart([]); fillHeatmap($("#error-heatmap"), []);
       return;
     }
 
@@ -1143,12 +1228,18 @@ button.link {
     });
 
     drawChart(aggs.map((g) => g.accuracy));
-    renderHeatmap(list);
+    // Selector del mapa de fallos: acumulado (todas) o última sesión.
+    wireHeatToggle($("#hist-heat-toggle"), $("#error-heatmap"), {
+      acc: () => list,
+      last: () => [list[list.length - 1]],
+    }, "acc");
   }
 
   function openSessionDetail(id) {
-    const rec = loadSessions().find((s) => s.id === id);
-    if (!rec) return;
+    const list = loadSessions();
+    const idx = list.findIndex((s) => s.id === id);
+    if (idx < 0) return;
+    const rec = list[idx];
     const d = new Date(rec.date);
     $("#detail-title").textContent = "Dashboard · " + d.toLocaleDateString() + " " +
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -1157,6 +1248,9 @@ button.link {
       `forma central: ${rec.config.centerShape === "cross" ? "cruz" : "punto"} · ` +
       `estímulo: ${rec.config.stimShape === "x" ? "equis" : "círculo"}.`;
     renderDashboard($("#detail-dashboard"), rec, false);
+    // Dos mapas: el de esta sesión y el acumulado hasta esta sesión (incluida).
+    fillHeatmap($("#detail-heat-one"), [rec]);
+    fillHeatmap($("#detail-heat-acc"), list.slice(0, idx + 1));
     showScreen("#screen-detail");
   }
 
@@ -1184,8 +1278,9 @@ button.link {
     values.forEach((v, i) => { const [x, y] = toXY(i, v); ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); });
   }
 
-  function renderHeatmap(sessions) {
-    const wrap = $("#error-heatmap");
+  // Pinta el mapa de fallos (rejilla GRID×GRID) en el elemento dado, a partir
+  // de un conjunto de sesiones (una sola, varias o todas las acumuladas).
+  function fillHeatmap(wrap, sessions) {
     wrap.style.gridTemplateColumns = `repeat(${GRID}, 1fr)`;
     wrap.style.gridTemplateRows = `repeat(${GRID}, 1fr)`;
     const total = new Array(GRID * GRID).fill(0);
@@ -1204,6 +1299,18 @@ button.link {
       cell.title = total[i] ? `${fails[i]} fallos / ${total[i]} estímulos` : "Sin datos";
       wrap.appendChild(cell);
     }
+  }
+
+  // Conecta un selector [botones .seg con data-mode] a un mapa de fallos.
+  // optionMap: { modo: () => arrayDeSesiones }. Usa onclick para no duplicar.
+  function wireHeatToggle(toggleEl, gridEl, optionMap, defaultMode) {
+    const btns = toggleEl.querySelectorAll(".seg");
+    const set = (mode) => {
+      btns.forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+      fillHeatmap(gridEl, optionMap[mode]());
+    };
+    btns.forEach((b) => { b.onclick = () => set(b.dataset.mode); });
+    set(defaultMode);
   }
 
   // =====================================================================
@@ -1237,6 +1344,45 @@ button.link {
     return "Muy baja";
   }
 
+  // ---- Distancia de uso recomendada según el tamaño físico de la pantalla ----
+  // Estimación del tamaño físico (no hay forma exacta en el navegador): se asume
+  // una densidad típica según el tipo de dispositivo; el usuario puede ajustarlo.
+  function estimateDiagInches() {
+    const dpr = window.devicePixelRatio || 1;
+    const coarse = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const ppi = coarse ? 150 * dpr : 96 * dpr;          // heurística
+    const sw = (screen.width || window.innerWidth) * dpr;
+    const sh = (screen.height || window.innerHeight) * dpr;
+    const inches = Math.hypot(sw, sh) / ppi;
+    return clamp(inches, 3, 32);
+  }
+
+  // Calcula y muestra la distancia recomendada y el campo visual resultante.
+  function updateDistanceReco() {
+    const diag = parseFloat($("#cfg-screen-diag").value);
+    const sw = screen.width || window.innerWidth;
+    const sh = screen.height || window.innerHeight;
+    const diagPx = Math.hypot(sw, sh) || 1;
+    const Wcm = diag * 2.54 * (sw / diagPx);
+    const Hcm = diag * 2.54 * (sh / diagPx);
+    const longCm = Math.max(Wcm, Hcm), shortCm = Math.min(Wcm, Hcm);
+
+    const healthMin = 30;                       // distancia mínima prudente (cm)
+    const halfAngle = 25 * Math.PI / 180;       // medio campo cómodo de barrido
+    const dFit = (longCm / 2) / Math.tan(halfAngle);
+    const D = Math.max(healthMin, dFit);
+
+    const deg = (sizeCm) => Math.round(2 * Math.atan((sizeCm / 2) / D) * 180 / Math.PI);
+
+    $("#dist-reco").innerHTML =
+      '<div class="big">📏 Distancia recomendada: ~' + Math.round(D) + ' cm</div>' +
+      '<div class="fov">Campo visual a esa distancia: ~' + deg(longCm) + '° × ' + deg(shortCm) + '°.</div>' +
+      '<div class="why">Es la distancia mínima prudente para no fatigar la vista que, a la vez, ' +
+      'hace que la pantalla abarque el mayor campo visual posible. Para estimular más ' +
+      'periferia, usa el dispositivo en <b>horizontal</b> y a esta distancia.</div>';
+  }
+
   // =====================================================================
   //  Eventos de interfaz
   // =====================================================================
@@ -1252,6 +1398,17 @@ button.link {
     sync("#cfg-tolerance", "#out-tolerance", toleranceLabel);
     sync("#cfg-view-time", "#out-view-time", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-skip-delay", "#out-skip-delay");
+
+    // Distancia recomendada: estimar tamaño de pantalla, sincronizar y recalcular.
+    const diagInput = $("#cfg-screen-diag");
+    diagInput.value = estimateDiagInches().toFixed(1);
+    sync("#cfg-screen-diag", "#out-screen-diag", (v) => parseFloat(v).toFixed(1));
+    diagInput.addEventListener("input", updateDistanceReco);
+    window.addEventListener("resize", updateDistanceReco);
+    if (screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener("change", updateDistanceReco);
+    }
+    updateDistanceReco();
 
     $("#config-form").addEventListener("submit", (e) => {
       e.preventDefault();
