@@ -782,6 +782,30 @@ button.link {
   // =====================================================================
   let camStream = null;
 
+  // Ajusta el lienzo al ÁREA REALMENTE VISIBLE. En móvil, 100vh incluye la zona
+  // bajo la barra del navegador, dejando estímulos fuera de pantalla (no se ven
+  // ni se pueden tocar). Igualar el lienzo a innerWidth/innerHeight lo evita.
+  function fitStage() {
+    const st = $("#stage");
+    st.style.width = window.innerWidth + "px";
+    st.style.height = window.innerHeight + "px";
+  }
+  function requestFs() {
+    try {
+      const el = document.documentElement;
+      const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (fn) { const p = fn.call(el); if (p && p.catch) p.catch(function () {}); }
+    } catch (e) { /* sin pantalla completa */ }
+  }
+  function exitFs() {
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        const fn = document.exitFullscreen || document.webkitExitFullscreen;
+        if (fn) { const p = fn.call(document); if (p && p.catch) p.catch(function () {}); }
+      }
+    } catch (e) { /* nada */ }
+  }
+
   function startSession(config) {
     const mode = resolveMode(config.mode);
     const positions = generatePositions(config.count, config.stimSize, config.adaptive);
@@ -801,6 +825,11 @@ button.link {
 
     applyColors(config);
     showScreen("#screen-exercise");
+    requestFs();              // pantalla completa: oculta la barra del navegador
+    fitStage();               // lienzo = área visible (evita estímulos fuera de pantalla)
+    window.addEventListener("resize", fitStage);
+    window.addEventListener("orientationchange", fitStage);
+    document.addEventListener("fullscreenchange", fitStage);
     if (config.camera) enableCamera();
 
     const ring = $("#cursor-ring");
@@ -1015,6 +1044,10 @@ button.link {
     stage.removeEventListener("pointermove", onPointerMove);
     stage.removeEventListener("pointerdown", onPointerDown);
     document.removeEventListener("keydown", onExerciseKey);
+    window.removeEventListener("resize", fitStage);
+    window.removeEventListener("orientationchange", fitStage);
+    document.removeEventListener("fullscreenchange", fitStage);
+    exitFs();
     clearSkipTimer(); clearViewTimer(); hideSkipFrame();
     locked = false;
     disableCamera();
