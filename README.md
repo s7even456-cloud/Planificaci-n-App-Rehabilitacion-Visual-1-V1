@@ -59,6 +59,12 @@ Atajo durante el ejercicio: `Esc` sale.
     gomet antes de pasar al siguiente).
   - Tiempo tras el cual aparece la franja **“No la veo”**.
 - **Ejercicio**
+  - Se ejecuta a **pantalla completa** y el lienzo se ajusta al área realmente
+    visible, de modo que ningún estímulo queda fuera de pantalla.
+  - **Orientación**: en móvil/tablet, si configuras en vertical, al empezar te
+    pide **girar a horizontal**; los estímulos se generan y puntúan en la
+    orientación real de uso, y la orientación se **fija** durante la prueba para
+    que un giro no altere los resultados.
   - Estímulos uno a uno, en posiciones aleatorias **sin solaparse** entre sí ni
     invadir la zona central, y siempre dentro del área útil (no bajo la franja).
   - **Sin acumulación**: tras marcar, la X y el gomet se muestran un tiempo

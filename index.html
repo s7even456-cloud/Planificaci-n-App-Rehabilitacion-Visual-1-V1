@@ -282,6 +282,25 @@ button.link {
 }
 #hud-progress { font-weight: 700; color: var(--ink); }
 
+/* Aviso para girar a horizontal antes de empezar (móvil/táctil en vertical) */
+.rotate-gate {
+  position: fixed; inset: 0; z-index: 8;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-ui); padding: 24px;
+}
+.rotate-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: var(--shadow); padding: 28px 24px; max-width: 420px; text-align: center;
+}
+.rotate-ico {
+  font-size: 3rem; color: var(--accent); line-height: 1;
+  animation: rotate-spin 2.4s ease-in-out infinite;
+}
+@keyframes rotate-spin { 0%,70%,100% { transform: rotate(0); } 85% { transform: rotate(90deg); } }
+.rotate-card h2 { margin: 12px 0 6px; }
+.rotate-card p { color: var(--ink-soft); line-height: 1.5; margin: 0 0 18px; }
+.rotate-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
 .cam-preview {
   position: fixed; right: 14px; top: 14px;
   width: clamp(120px, 18vw, 220px); aspect-ratio: 4/3;
@@ -548,6 +567,18 @@ button.link {
       <span class="hud-hint" id="hud-hint">Marca el estímulo que percibas · <kbd>Esc</kbd> salir</span>
     </div>
     <video id="cam-preview" class="cam-preview hidden" autoplay muted playsinline></video>
+    <div id="rotate-gate" class="rotate-gate hidden">
+      <div class="rotate-card">
+        <div class="rotate-ico">⟳</div>
+        <h2>Gira el dispositivo a horizontal</h2>
+        <p>Para evaluar el máximo campo visual, coloca el dispositivo en posición
+           <b>horizontal</b>. La prueba empezará automáticamente al girarlo.</p>
+        <div class="rotate-actions">
+          <button type="button" id="btn-rotate-cancel" class="ghost">Cancelar</button>
+          <button type="button" id="btn-continue-portrait" class="ghost">Continuar en vertical</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== PANTALLA: RESULTADO (dashboard editable) ===================== -->
@@ -806,30 +837,78 @@ button.link {
     } catch (e) { /* nada */ }
   }
 
+  let pendingCfg = null, pendingMode = null, begun = false;
+
+  function isPortrait() { return window.innerHeight > window.innerWidth; }
+
+  function lockCurrentOrientation() {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        const t = isPortrait() ? "portrait" : "landscape";
+        const p = screen.orientation.lock(t); if (p && p.catch) p.catch(function () {});
+      }
+    } catch (e) { /* bloqueo no soportado */ }
+  }
+  function unlockOrientation() {
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }
+    catch (e) { /* nada */ }
+  }
+
+  // Preparación de la sesión. Si es táctil y está en vertical, esperamos a que
+  // el dispositivo se ponga en horizontal antes de generar y mostrar nada, de
+  // modo que los estímulos se generan y puntúan en la orientación real de uso.
   function startSession(config) {
-    const mode = resolveMode(config.mode);
+    pendingCfg = config;
+    pendingMode = resolveMode(config.mode);
+    begun = false;
+
+    applyColors(config);
+    showScreen("#screen-exercise");
+    requestFs();              // pantalla completa: oculta la barra del navegador
+    fitStage();
+    window.addEventListener("resize", onExResize);
+    window.addEventListener("orientationchange", onExResize);
+    document.addEventListener("fullscreenchange", onExResize);
+
+    if (pendingMode !== "pc" && isPortrait()) {
+      $("#rotate-gate").classList.remove("hidden");   // pedir giro a horizontal
+    } else {
+      beginExercise();
+    }
+  }
+
+  // Reajusta el lienzo y, si estábamos esperando el giro, arranca al detectar
+  // horizontal.
+  function onExResize() {
+    fitStage();
+    if (!begun && pendingMode !== "pc" && !isPortrait()) beginExercise();
+  }
+
+  // Arranque real del ejercicio: genera posiciones en la orientación ACTUAL,
+  // fija la orientación y muestra el primer estímulo.
+  function beginExercise() {
+    if (begun) return;
+    begun = true;
+    $("#rotate-gate").classList.add("hidden");
+    lockCurrentOrientation();   // que un giro durante la prueba no altere nada
+    fitStage();
+
+    const config = pendingCfg, mode = pendingMode;
     const positions = generatePositions(config.count, config.stimSize, config.adaptive);
     session = {
       startedAt: Date.now(),
       config, mode,
       stimuli: positions.map((p) => ({
         x: p.x, y: p.y,
-        markX: null, markY: null,   // posición de la marca (%)
-        dist: null, dx: null, dy: null, // error en radios del estímulo
-        rt: null,                   // tiempo de respuesta (ms)
+        markX: null, markY: null,
+        dist: null, dx: null, dy: null,
+        rt: null,
         hit: false, skipped: false,
         shownAt: null,
       })),
       current: 0,
     };
 
-    applyColors(config);
-    showScreen("#screen-exercise");
-    requestFs();              // pantalla completa: oculta la barra del navegador
-    fitStage();               // lienzo = área visible (evita estímulos fuera de pantalla)
-    window.addEventListener("resize", fitStage);
-    window.addEventListener("orientationchange", fitStage);
-    document.addEventListener("fullscreenchange", fitStage);
     if (config.camera) enableCamera();
 
     const ring = $("#cursor-ring");
@@ -850,6 +929,11 @@ button.link {
     stage.addEventListener("pointermove", onPointerMove);
     stage.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onExerciseKey);
+  }
+
+  function abortToConfig() {
+    cleanupExercise();
+    showScreen("#screen-config");
   }
 
   function applyColors(c) {
@@ -1044,10 +1128,13 @@ button.link {
     stage.removeEventListener("pointermove", onPointerMove);
     stage.removeEventListener("pointerdown", onPointerDown);
     document.removeEventListener("keydown", onExerciseKey);
-    window.removeEventListener("resize", fitStage);
-    window.removeEventListener("orientationchange", fitStage);
-    document.removeEventListener("fullscreenchange", fitStage);
+    window.removeEventListener("resize", onExResize);
+    window.removeEventListener("orientationchange", onExResize);
+    document.removeEventListener("fullscreenchange", onExResize);
+    unlockOrientation();
     exitFs();
+    begun = false;
+    $("#rotate-gate").classList.add("hidden");
     clearSkipTimer(); clearViewTimer(); hideSkipFrame();
     locked = false;
     disableCamera();
@@ -1450,6 +1537,10 @@ button.link {
 
     // Franja "No la veo": doble clic / doble toque en cualquier punto del marco.
     $("#skip-frame").addEventListener("pointerup", onSkipActivate);
+
+    // Aviso de giro a horizontal.
+    $("#btn-continue-portrait").addEventListener("click", () => beginExercise());
+    $("#btn-rotate-cancel").addEventListener("click", () => abortToConfig());
 
     $("#btn-history").addEventListener("click", () => { renderHistory(); showScreen("#screen-history"); });
     $("#btn-back-config").addEventListener("click", () => showScreen("#screen-config"));
