@@ -92,8 +92,10 @@ Atajo durante el ejercicio: `Esc` sale.
     (todas las sesiones) y la *sesión* concreta. En el resultado de cada sesión
     puedes ver su propio mapa o el acumulado.
   - **Histórico de dashboards**: cada fecha es seleccionable y reabre el
-    dashboard completo de esa prueba concreta, mostrando **dos mapas de fallos**:
-    el de esa sesión y el **acumulado hasta esa sesión**.
+    dashboard completo de esa prueba concreta, mostrando además un **gráfico de
+    evolución del tiempo medio de respuesta** (desde la primera sesión hasta la
+    seleccionada) y **dos mapas de fallos**: el de esa sesión y el **acumulado
+    hasta esa sesión**.
   - **Borrado selectivo**: elimina una sesión concreta (🗑) o todo el historial.
   - Exportar el historial a JSON.
 - **Refuerzo adaptativo** (opcional): las próximas sesiones aumentan la

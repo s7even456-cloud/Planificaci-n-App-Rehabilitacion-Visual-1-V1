@@ -634,6 +634,9 @@ button.link {
       <h2 id="detail-title">Dashboard de la sesión</h2>
       <p class="subtitle" id="detail-subtitle"></p>
       <div id="detail-dashboard"></div>
+      <h3>Evolución del tiempo medio de respuesta</h3>
+      <p class="subtitle">Tiempo medio por sesión, desde la primera hasta esta sesión.</p>
+      <div class="chart-wrap"><canvas id="detail-time-chart" width="800" height="240"></canvas></div>
       <h3>Mapa de fallos</h3>
       <div class="heatmap-pair">
         <div>
@@ -1368,6 +1371,12 @@ button.link {
       `forma central: ${rec.config.centerShape === "cross" ? "cruz" : "punto"} · ` +
       `estímulo: ${rec.config.stimShape === "x" ? "equis" : "círculo"}.`;
     renderDashboard($("#detail-dashboard"), rec, false);
+    // Evolución del tiempo medio de respuesta hasta esta sesión (incluida).
+    const upto = list.slice(0, idx + 1);
+    drawTimeChart($("#detail-time-chart"), upto.map((s) => {
+      const a = aggregate(s.stimuli);
+      return a.meanRt ? a.meanRt / 1000 : 0;
+    }));
     // Dos mapas: el de esta sesión y el acumulado hasta esta sesión (incluida).
     fillHeatmap($("#detail-heat-one"), [rec]);
     fillHeatmap($("#detail-heat-acc"), list.slice(0, idx + 1));
@@ -1396,6 +1405,35 @@ button.link {
     ctx.stroke();
     ctx.fillStyle = "#2f6f5e";
     values.forEach((v, i) => { const [x, y] = toXY(i, v); ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); });
+  }
+
+  // Gráfico de líneas del tiempo medio de respuesta (en segundos) por sesión.
+  function drawTimeChart(cv, secs) {
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height, pad = 44;
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = "#d9d5cb"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad, 10); ctx.lineTo(pad, H - pad); ctx.lineTo(W - 10, H - pad); ctx.stroke();
+    const maxV = Math.max(1, ...secs);
+    const yMax = Math.ceil(maxV * 1.2 * 10) / 10;
+    ctx.fillStyle = "#9a958a"; ctx.font = "12px system-ui";
+    [0, 0.5, 1].forEach((f) => {
+      const y = (H - pad) - f * (H - pad - 10);
+      ctx.fillText((yMax * f).toFixed(1) + "s", 4, y + 4);
+      ctx.strokeStyle = "#efeee9"; ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - 10, y); ctx.stroke();
+    });
+    if (!secs.length) return;
+    const stepX = secs.length > 1 ? (W - pad - 20) / (secs.length - 1) : 0;
+    const toXY = (i, v) => [pad + i * stepX, (H - pad) - (v / yMax) * (H - pad - 10)];
+    ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 2.5; ctx.beginPath();
+    secs.forEach((v, i) => { const [x, y] = toXY(i, v); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.stroke();
+    secs.forEach((v, i) => {
+      const [x, y] = toXY(i, v);
+      const isLast = i === secs.length - 1;       // resaltar la sesión seleccionada
+      ctx.fillStyle = isLast ? "#2f6f5e" : "#b8860b";
+      ctx.beginPath(); ctx.arc(x, y, isLast ? 5.5 : 3.5, 0, Math.PI * 2); ctx.fill();
+    });
   }
 
   // Pinta el mapa de fallos (rejilla GRID×GRID) en el elemento dado, a partir
