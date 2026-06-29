@@ -694,6 +694,9 @@ button.link {
   function showScreen(id) {
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $(id).classList.add("active");
+    // Redibuja los gráficos cuando su pantalla ya es visible (para medir bien su
+    // ancho real; dibujarlos ocultos daría ancho 0).
+    if (typeof onChartsResize === "function") onChartsResize();
   }
 
   function loadSessions() {
@@ -1383,11 +1386,30 @@ button.link {
     showScreen("#screen-detail");
   }
 
-  // Gráfico de líneas de la precisión por sesión.
-  function drawChart(values) {
-    const cv = $("#evolution-chart");
+  // Ajusta el canvas al ancho real de su contenedor (nítido en pantallas HiDPI)
+  // y devuelve el contexto y las dimensiones CSS. Así los gráficos ocupan todo
+  // el ancho disponible y se adaptan a vertical/horizontal.
+  function fitCanvas(cv, cssH) {
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = Math.max(220, (cv.parentElement ? cv.parentElement.clientWidth : cv.clientWidth) || 300);
+    cv.style.width = cssW + "px";
+    cv.style.height = cssH + "px";
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
     const ctx = cv.getContext("2d");
-    const W = cv.width, H = cv.height, pad = 36;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, W: cssW, H: cssH };
+  }
+
+  // Memoria del último dato dibujado, para redibujar al cambiar el tamaño.
+  let lastAccVals = [], lastTimeSecs = [];
+
+  // Gráfico de líneas de la precisión por sesión (responsivo).
+  function drawChart(values) {
+    lastAccVals = values;
+    const cv = $("#evolution-chart");
+    const { ctx, W, H } = fitCanvas(cv, 240);
+    const pad = 36;
     ctx.clearRect(0, 0, W, H);
     ctx.strokeStyle = "#d9d5cb"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad, 10); ctx.lineTo(pad, H - pad); ctx.lineTo(W - 10, H - pad); ctx.stroke();
@@ -1407,10 +1429,12 @@ button.link {
     values.forEach((v, i) => { const [x, y] = toXY(i, v); ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); });
   }
 
-  // Gráfico de líneas del tiempo medio de respuesta (en segundos) por sesión.
+  // Gráfico de líneas del tiempo medio de respuesta (en segundos), responsivo:
+  // ocupa todo el ancho y reparte los puntos según el número de sesiones.
   function drawTimeChart(cv, secs) {
-    const ctx = cv.getContext("2d");
-    const W = cv.width, H = cv.height, pad = 44;
+    lastTimeSecs = secs;
+    const { ctx, W, H } = fitCanvas(cv, 240);
+    const pad = 44;
     ctx.clearRect(0, 0, W, H);
     ctx.strokeStyle = "#d9d5cb"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad, 10); ctx.lineTo(pad, H - pad); ctx.lineTo(W - 10, H - pad); ctx.stroke();
@@ -1434,6 +1458,12 @@ button.link {
       ctx.fillStyle = isLast ? "#2f6f5e" : "#b8860b";
       ctx.beginPath(); ctx.arc(x, y, isLast ? 5.5 : 3.5, 0, Math.PI * 2); ctx.fill();
     });
+  }
+
+  // Redibuja el gráfico de la pantalla visible al cambiar el tamaño/orientación.
+  function onChartsResize() {
+    if ($("#screen-history").classList.contains("active")) drawChart(lastAccVals);
+    if ($("#screen-detail").classList.contains("active")) drawTimeChart($("#detail-time-chart"), lastTimeSecs);
   }
 
   // Pinta el mapa de fallos (rejilla GRID×GRID) en el elemento dado, a partir
@@ -1579,6 +1609,10 @@ button.link {
     // Aviso de giro a horizontal.
     $("#btn-continue-portrait").addEventListener("click", () => beginExercise());
     $("#btn-rotate-cancel").addEventListener("click", () => abortToConfig());
+
+    // Gráficos responsivos: redibujar al cambiar tamaño u orientación.
+    window.addEventListener("resize", onChartsResize);
+    window.addEventListener("orientationchange", onChartsResize);
 
     $("#btn-history").addEventListener("click", () => { renderHistory(); showScreen("#screen-history"); });
     $("#btn-back-config").addEventListener("click", () => showScreen("#screen-config"));
