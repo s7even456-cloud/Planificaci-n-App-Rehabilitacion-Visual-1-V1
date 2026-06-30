@@ -1117,10 +1117,21 @@ button.link {
     advance();
   }
 
+  // Re-pinta el mapa de fallos del resultado en el modo actualmente elegido
+  // (esta sesión / acumulado), usando los datos vigentes de pendingRecord.
+  function refreshResultHeatmap() {
+    if (!pendingRecord) return;
+    const active = $("#result-heat-toggle .seg.active");
+    const mode = active ? active.dataset.mode : "one";
+    fillHeatmap($("#result-heatmap"),
+      mode === "acc" ? loadSessions().concat([pendingRecord]) : [pendingRecord]);
+  }
+
   function endExercise() {
     cleanupExercise();
     pendingRecord = buildRecord(session);
-    renderDashboard($("#result-dashboard"), pendingRecord, true);
+    // Al corregir una marca, se actualizan al momento los mapas de fallos.
+    renderDashboard($("#result-dashboard"), pendingRecord, true, refreshResultHeatmap);
     // Selector del mapa de fallos: esta sesión o acumulado (guardadas + esta).
     wireHeatToggle($("#result-heat-toggle"), $("#result-heatmap"), {
       one: () => [pendingRecord],
@@ -1207,7 +1218,7 @@ button.link {
   // =====================================================================
   //  Dashboard (resultado actual y detalle histórico)
   // =====================================================================
-  function renderDashboard(container, record, editable) {
+  function renderDashboard(container, record, editable, onToggle) {
     const c = record.config;
     container.style.setProperty("--fix-color", c.colorCenter);
     container.style.setProperty("--stim-color", c.colorStim);
@@ -1270,7 +1281,8 @@ button.link {
           const st = record.stimuli[i];
           st.hit = !st.hit;
           st.hit ? sndOk() : sndFail();
-          renderDashboard(container, record, true); // re-render con stats actualizadas
+          renderDashboard(container, record, true, onToggle); // re-render con stats actualizadas
+          if (onToggle) onToggle();                           // actualizar mapas de fallos
         });
       });
     }
