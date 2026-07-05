@@ -120,6 +120,22 @@ kbd {
   border-radius: 6px; padding: 1px 7px; font-size: 0.85em; font-family: inherit;
 }
 
+/* Insignia de versión */
+.ver {
+  font-size: 0.45em; font-weight: 700; color: var(--ink-soft);
+  background: #efeee9; border: 1px solid var(--border); border-radius: 8px;
+  padding: 2px 9px; vertical-align: middle; margin-left: 6px; white-space: nowrap;
+}
+
+/* Cuenta atrás antes del primer estímulo (da tiempo a fijar la mirada) */
+.countdown {
+  position: absolute; left: 50%; top: 26%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(3rem, 14vmin, 7rem); font-weight: 800;
+  color: var(--accent); z-index: 5; pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
 /* Panel de distancia recomendada */
 .dist-reco {
   background: linear-gradient(135deg, #eef5f2, #f7faf8);
@@ -416,7 +432,7 @@ button.link {
   <!-- ===================== PANTALLA: CONFIGURACIÓN ===================== -->
   <section id="screen-config" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual</h1>
+      <h1>Rehabilitación Visual <span class="ver">v3.0</span></h1>
       <p class="subtitle">
         Fija la mirada en la figura central. Cuando percibas un estímulo en la
         periferia, márcalo: en PC con un <strong>clic</strong> y en pantallas
@@ -521,6 +537,12 @@ button.link {
           </label>
 
           <label class="field">
+            <span>Aparición aleatoria del estímulo: hasta <output id="out-isi">1.0</output> s</span>
+            <input type="range" id="cfg-isi" min="0" max="3" step="0.1" value="1.0" />
+            <small class="hint-text">El siguiente estímulo tarda un tiempo aleatorio en aparecer (0,3 – máx.), para evitar respuestas rítmicas por anticipación. 0 = aparición inmediata.</small>
+          </label>
+
+          <label class="field">
             <span>Mostrar franja “No la veo” tras: <output id="out-skip-delay">4</output> s</span>
             <input type="range" id="cfg-skip-delay" min="1" max="15" step="1" value="4" />
             <small class="hint-text">Aparece una franja alrededor de todo el borde de la pantalla; se activa con doble clic / doble toque en cualquier punto de ella.</small>
@@ -532,6 +554,10 @@ button.link {
           <label class="field-inline">
             <input type="checkbox" id="cfg-sound" checked />
             <span>Señal acústica de feedback (acierto / fallo)</span>
+          </label>
+          <label class="field-inline">
+            <input type="checkbox" id="cfg-vibrate" checked />
+            <span>Vibración de feedback (en móviles compatibles)</span>
           </label>
           <label class="field-inline">
             <input type="checkbox" id="cfg-adaptive" checked />
@@ -555,6 +581,7 @@ button.link {
     <div id="stage" class="stage">
       <!-- figura central, estímulos y gomets se inyectan aquí -->
       <div id="cursor-ring" class="cursor-ring hidden"></div>
+      <div id="countdown" class="countdown hidden"></div>
     </div>
     <div id="skip-frame" class="skip-frame hidden" aria-label="No la veo">
       <div class="skip-edge top"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
@@ -621,9 +648,12 @@ button.link {
       <h3>Sesiones (selecciona una para ver su dashboard)</h3>
       <div id="history-list" class="history-list"></div>
       <div class="review-actions">
-        <button type="button" id="btn-export" class="ghost">Exportar datos (JSON)</button>
+        <button type="button" id="btn-export" class="ghost">Exportar JSON</button>
+        <button type="button" id="btn-export-csv" class="ghost">Exportar CSV</button>
+        <button type="button" id="btn-import" class="ghost">Importar datos</button>
         <button type="button" id="btn-clear" class="ghost danger">Borrar historial</button>
         <button type="button" id="btn-back-config" class="primary">Volver al inicio</button>
+        <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
       </div>
     </div>
   </section>
@@ -675,14 +705,18 @@ button.link {
 (() => {
   "use strict";
 
+  const APP_VERSION = "3.0";
   const STORAGE_KEY = "rehab_visual_sessions_v2";
+  const CONFIG_KEY = "rehab_visual_config_v1";
   const GRID = 4;          // rejilla para mapa de fallos y refuerzo adaptativo
   const DBLTAP_MS = 450;   // ventana para doble clic / doble toque
 
   let session = null;      // sesión en curso
   let skipTimer = null;    // temporizador de la franja "No la veo"
   let viewTimer = null;    // temporizador del tiempo de visualización tras marcar
-  let locked = false;      // bloquea nuevas marcas durante el tiempo de visualización
+  let isiTimer = null;     // temporizador de aparición aleatoria del estímulo
+  let cdTimer = null;      // temporizador de la cuenta atrás inicial
+  let locked = false;      // bloquea nuevas marcas (visualización, espera o cuenta atrás)
   let lastSkipTap = 0;     // instante de la última pulsación (doble activación)
 
   // =====================================================================
@@ -703,7 +737,13 @@ button.link {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
     catch (e) { return []; }
   }
-  function saveSessions(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+  function saveSessions(list) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+    catch (e) {
+      alert("No se pudo guardar en el almacenamiento del navegador (¿espacio lleno o modo privado?). " +
+            "Exporta tus datos a JSON como copia de seguridad.");
+    }
+  }
 
   function cellIndex(xPct, yPct) {
     const cx = clamp(Math.floor((xPct / 100) * GRID), 0, GRID - 1);
@@ -720,10 +760,21 @@ button.link {
   //  Audio (feedback inmediato de acierto / fallo)
   // =====================================================================
   let audioCtx = null;
+
+  // Crea/reactiva el contexto de audio desde un gesto del usuario. En muchos
+  // móviles el audio arranca "suspendido" hasta que un gesto lo desbloquea.
+  function unlockAudio() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
+    } catch (e) { /* audio no disponible */ }
+  }
+
   function tone(freq, durationMs, type = "sine", gainPeak = 0.18) {
     if (!session || !session.config.sound) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = type; osc.frequency.value = freq;
@@ -737,6 +788,37 @@ button.link {
   }
   const sndOk = () => tone(660, 150, "sine", 0.18);
   const sndFail = () => tone(180, 240, "triangle", 0.20);
+
+  // Vibración de feedback (solo si el dispositivo la soporta y está activada).
+  function vibrate(pattern) {
+    try {
+      if (session && session.config.vibrate && navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) { /* sin vibración */ }
+  }
+
+  // ---- Wake Lock: evita que la pantalla se atenúe o bloquee durante la prueba
+  // (entre estímulo y estímulo puede no haber toques durante bastantes segundos).
+  let wakeLock = null;
+  function acquireWakeLock() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request) {
+        navigator.wakeLock.request("screen")
+          .then(function (wl) { wakeLock = wl; })
+          .catch(function () { /* no concedido */ });
+      }
+    } catch (e) { /* no soportado */ }
+  }
+  function releaseWakeLock() {
+    try {
+      if (wakeLock) { wakeLock.release().catch(function () {}); wakeLock = null; }
+    } catch (e) { wakeLock = null; }
+  }
+  function onVisWake() {
+    if (document.visibilityState === "visible" && begun) acquireWakeLock();
+  }
+
+  // Aviso al salir de la página con un ejercicio en curso.
+  function onBeforeUnload(e) { e.preventDefault(); e.returnValue = ""; }
 
   // =====================================================================
   //  Generación de posiciones (sin solape, con refuerzo adaptativo)
@@ -864,6 +946,7 @@ button.link {
   // el dispositivo se ponga en horizontal antes de generar y mostrar nada, de
   // modo que los estímulos se generan y puntúan en la orientación real de uso.
   function startSession(config) {
+    persistConfig(config);    // recordar los ajustes para la próxima vez
     pendingCfg = config;
     pendingMode = resolveMode(config.mode);
     begun = false;
@@ -929,7 +1012,15 @@ button.link {
     }
 
     renderFixation();
-    showStimulus(0);
+    $("#hud-progress").textContent = "0 / " + session.stimuli.length;
+
+    acquireWakeLock();
+    document.addEventListener("visibilitychange", onVisWake);
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    // Cuenta atrás para fijar la mirada y, después, primer estímulo con
+    // retardo aleatorio.
+    runCountdown(function () { scheduleStimulus(0); });
 
     const stage = $("#stage");
     stage.addEventListener("pointermove", onPointerMove);
@@ -965,6 +1056,41 @@ button.link {
   // Quita de la pantalla el estímulo y el gomet actuales (no se acumulan).
   function clearStageMarks() {
     $("#stage").querySelectorAll(".stimulus, .gomet").forEach((e) => e.remove());
+  }
+
+  // Cuenta atrás 3-2-1 con la figura central visible, para que el usuario
+  // fije la mirada antes del primer estímulo.
+  function runCountdown(done) {
+    locked = true;
+    const el = $("#countdown");
+    let n = 3;
+    el.textContent = n;
+    el.classList.remove("hidden");
+    clearCdTimer();
+    cdTimer = setInterval(function () {
+      n--;
+      if (n <= 0) {
+        clearCdTimer();
+        el.classList.add("hidden");
+        done();
+      } else {
+        el.textContent = n;
+      }
+    }, 1000);
+  }
+
+  // Programa la aparición del estímulo con un retardo aleatorio (anti-
+  // anticipación): entre 0,3 s y el máximo configurado. Con máximo 0, aparece
+  // de inmediato. Durante la espera solo se ve la figura central y las
+  // pulsaciones se ignoran.
+  function scheduleStimulus(index) {
+    clearStageMarks();
+    locked = true;
+    clearIsiTimer();
+    const maxMs = session.config.isi * 1000;
+    const delay = maxMs > 0 ? 300 + Math.random() * Math.max(0, maxMs - 300) : 0;
+    if (delay === 0) { showStimulus(index); return; }
+    isiTimer = setTimeout(function () { showStimulus(index); }, delay);
   }
 
   function showStimulus(index) {
@@ -1037,7 +1163,8 @@ button.link {
     clearSkipTimer();
     hideSkipFrame();
     drawGomet(markXpct, markYpct);
-    st.hit ? sndOk() : sndFail();
+    if (st.hit) { sndOk(); vibrate(35); }
+    else { sndFail(); vibrate([0, 90, 60, 90]); }
 
     // La X y el gomet siguen visibles un tiempo (retirar la mano) y luego pasan.
     clearViewTimer();
@@ -1059,10 +1186,11 @@ button.link {
   function advance() {
     clearSkipTimer();
     clearViewTimer();
+    clearIsiTimer();
     hideSkipFrame();
     session.current++;
     if (session.current >= session.stimuli.length) endExercise();
-    else showStimulus(session.current);
+    else scheduleStimulus(session.current);
   }
 
   function onExerciseKey(e) {
@@ -1084,6 +1212,8 @@ button.link {
   }
   function clearSkipTimer() { if (skipTimer) { clearTimeout(skipTimer); skipTimer = null; } }
   function clearViewTimer() { if (viewTimer) { clearTimeout(viewTimer); viewTimer = null; } }
+  function clearIsiTimer() { if (isiTimer) { clearTimeout(isiTimer); isiTimer = null; } }
+  function clearCdTimer() { if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
 
   function showSkipFrame() {
     $("#skip-frame").classList.remove("hidden");
@@ -1114,6 +1244,7 @@ button.link {
     st.markX = null; st.markY = null;
     st.rt = Math.round(performance.now() - st.shownAt);
     sndFail();
+    vibrate([0, 90, 60, 90]);
     advance();
   }
 
@@ -1148,11 +1279,16 @@ button.link {
     window.removeEventListener("resize", onExResize);
     window.removeEventListener("orientationchange", onExResize);
     document.removeEventListener("fullscreenchange", onExResize);
+    document.removeEventListener("visibilitychange", onVisWake);
+    window.removeEventListener("beforeunload", onBeforeUnload);
+    releaseWakeLock();
     unlockOrientation();
     exitFs();
     begun = false;
     $("#rotate-gate").classList.add("hidden");
-    clearSkipTimer(); clearViewTimer(); hideSkipFrame();
+    $("#countdown").classList.add("hidden");
+    clearSkipTimer(); clearViewTimer(); clearIsiTimer(); clearCdTimer();
+    hideSkipFrame();
     locked = false;
     disableCamera();
     stage.querySelectorAll(".fixation, .stimulus, .gomet").forEach((e) => e.remove());
@@ -1184,6 +1320,8 @@ button.link {
       id: s.startedAt,
       date: new Date(s.startedAt).toISOString(),
       mode: s.mode,
+      duration: Date.now() - s.startedAt,
+      appVersion: APP_VERSION,
       config: s.config,
       stimuli: s.stimuli.map((st) => ({
         x: st.x, y: st.y, markX: st.markX, markY: st.markY,
@@ -1206,14 +1344,30 @@ button.link {
       ? answered.reduce((a, s) => a + s.dy, 0) / answered.length : 0;
     const meanRt = answered.length
       ? Math.round(answered.reduce((a, s) => a + (s.rt || 0), 0) / answered.length) : null;
+    // Precisión por hemicampo (los "no vistos" cuentan como fallo: es
+    // exactamente lo que delata una zona afectada del campo visual).
+    const hemiAcc = (list) => list.length ? list.filter((s) => s.hit).length / list.length : null;
+    const hemiL = hemiAcc(stimuli.filter((s) => s.x < 50));
+    const hemiR = hemiAcc(stimuli.filter((s) => s.x >= 50));
+    const hemiT = hemiAcc(stimuli.filter((s) => s.y < 50));
+    const hemiB = hemiAcc(stimuli.filter((s) => s.y >= 50));
     return {
       total, hits, skipped,
       accuracy: total ? hits / total : 0,
       meanErr, biasX, biasY, meanRt,
+      hemiL, hemiR, hemiT, hemiB,
     };
   }
 
   const pct = (v) => Math.round(v * 100) + "%";
+
+  // Duración en formato m:ss.
+  function fmtDur(ms) {
+    const s = Math.round(ms / 1000);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
 
   // =====================================================================
   //  Dashboard (resultado actual y detalle histórico)
@@ -1228,6 +1382,15 @@ button.link {
 
     // --- Tarjetas de estadísticas ---
     const biasTxt = describeBias(a.biasX, a.biasY);
+    // Par de hemicampos: resalta en rojo el lado claramente más débil.
+    const hemiPair = (v1, v2) => {
+      const f = (v, other) => {
+        if (v == null) return "—";
+        const weak = other != null && v < other - 0.1;
+        return weak ? '<span style="color:var(--fail)">' + pct(v) + "</span>" : pct(v);
+      };
+      return f(v1, v2) + " / " + f(v2, v1);
+    };
     const stats = `
       <div class="dash-stats">
         <div class="stat-card"><div class="num">${pct(a.accuracy)}</div><div class="lbl">Precisión</div></div>
@@ -1236,6 +1399,9 @@ button.link {
         <div class="stat-card"><div class="num">${a.meanErr != null ? a.meanErr.toFixed(2) + "×" : "—"}</div><div class="lbl">Error medio (radios)</div></div>
         <div class="stat-card"><div class="num">${a.meanRt != null ? (a.meanRt/1000).toFixed(1) + "s" : "—"}</div><div class="lbl">Tiempo medio</div></div>
         <div class="stat-card"><div class="num" style="font-size:1rem">${biasTxt}</div><div class="lbl">Sesgo del error</div></div>
+        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiL, a.hemiR)}</div><div class="lbl">Campo izq / der</div></div>
+        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiT, a.hemiB)}</div><div class="lbl">Campo sup / inf</div></div>
+        <div class="stat-card"><div class="num">${record.duration ? fmtDur(record.duration) : "—"}</div><div class="lbl">Duración</div></div>
       </div>`;
 
     // --- Mapa: estímulos, gomets y líneas de error ---
@@ -1439,6 +1605,17 @@ button.link {
     ctx.stroke();
     ctx.fillStyle = "#2f6f5e";
     values.forEach((v, i) => { const [x, y] = toXY(i, v); ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); });
+    drawXLabels(ctx, values.length, pad, stepX, H - pad + 15);
+  }
+
+  // Números de sesión bajo el eje X (como máximo ~10 etiquetas).
+  function drawXLabels(ctx, n, pad, stepX, y) {
+    ctx.fillStyle = "#9a958a"; ctx.font = "11px system-ui"; ctx.textAlign = "center";
+    const every = Math.max(1, Math.ceil(n / 10));
+    for (let i = 0; i < n; i++) {
+      if (i % every === 0 || i === n - 1) ctx.fillText(String(i + 1), pad + i * stepX, y);
+    }
+    ctx.textAlign = "left";
   }
 
   // Gráfico de líneas del tiempo medio de respuesta (en segundos), responsivo:
@@ -1470,6 +1647,7 @@ button.link {
       ctx.fillStyle = isLast ? "#2f6f5e" : "#b8860b";
       ctx.beginPath(); ctx.arc(x, y, isLast ? 5.5 : 3.5, 0, Math.PI * 2); ctx.fill();
     });
+    drawXLabels(ctx, secs.length, pad, stepX, H - pad + 15);
   }
 
   // Redibuja el gráfico de la pantalla visible al cambiar el tamaño/orientación.
@@ -1530,11 +1708,52 @@ button.link {
       mode: $("#cfg-mode").value,
       tolerance: parseFloat($("#cfg-tolerance").value),
       viewTime: parseFloat($("#cfg-view-time").value),
+      isi: parseFloat($("#cfg-isi").value),
       skipDelay: parseInt($("#cfg-skip-delay").value, 10),
       sound: $("#cfg-sound").checked,
+      vibrate: $("#cfg-vibrate").checked,
       adaptive: $("#cfg-adaptive").checked,
       camera: $("#cfg-camera").checked,
+      screenDiag: parseFloat($("#cfg-screen-diag").value),
     };
+  }
+
+  // ---- Persistencia de la configuración: recuerda los ajustes entre usos ----
+  function persistConfig(cfg) {
+    try { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (e) { /* nada */ }
+  }
+
+  function restoreConfig() {
+    let c = null;
+    try { c = JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch (e) { return; }
+    if (!c) return;
+    const set = (sel, v) => {
+      if (v === undefined || v === null) return;
+      const el = $(sel);
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    set("#cfg-count", c.count);
+    set("#cfg-stim-shape", c.stimShape);
+    set("#cfg-stim-size", c.stimSize);
+    set("#cfg-center-shape", c.centerShape);
+    set("#cfg-center-size", c.centerSize);
+    set("#cfg-color-center", c.colorCenter);
+    set("#cfg-color-stim", c.colorStim);
+    set("#cfg-color-gomet", c.colorGomet);
+    set("#cfg-color-cursor", c.colorCursor);
+    set("#cfg-mode", c.mode);
+    set("#cfg-tolerance", c.tolerance);
+    set("#cfg-view-time", c.viewTime);
+    set("#cfg-isi", c.isi);
+    set("#cfg-skip-delay", c.skipDelay);
+    set("#cfg-sound", c.sound);
+    set("#cfg-vibrate", c.vibrate);
+    set("#cfg-adaptive", c.adaptive);
+    set("#cfg-camera", c.camera);
+    set("#cfg-screen-diag", c.screenDiag);
   }
 
   function toleranceLabel(v) {
@@ -1597,6 +1816,7 @@ button.link {
     sync("#cfg-center-size", "#out-center-size", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-tolerance", "#out-tolerance", toleranceLabel);
     sync("#cfg-view-time", "#out-view-time", (v) => parseFloat(v).toFixed(1));
+    sync("#cfg-isi", "#out-isi", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-skip-delay", "#out-skip-delay");
 
     // Distancia recomendada: estimar tamaño de pantalla, sincronizar y recalcular.
@@ -1610,8 +1830,12 @@ button.link {
     }
     updateDistanceReco();
 
+    // Restaurar la última configuración usada (si existe).
+    restoreConfig();
+
     $("#config-form").addEventListener("submit", (e) => {
       e.preventDefault();
+      unlockAudio();          // desbloquear el audio desde el gesto del usuario
       startSession(readConfig());
     });
 
@@ -1642,15 +1866,74 @@ button.link {
       if (confirm("¿Borrar todo el historial de sesiones?")) { saveSessions([]); renderHistory(); }
     });
     $("#btn-export").addEventListener("click", exportData);
-    // Los botones "No la veo" se crean dinámicamente; su manejador se asigna al crearlos.
+    $("#btn-export-csv").addEventListener("click", exportCsv);
+    $("#btn-import").addEventListener("click", () => $("#import-file").click());
+    $("#import-file").addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) importData(f);
+      e.target.value = "";   // permitir reimportar el mismo archivo
+    });
+  }
+
+  function downloadBlob(content, mime, filename) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
   }
 
   function exportData() {
-    const blob = new Blob([JSON.stringify(loadSessions(), null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "rehabilitacion-visual-historial.json"; a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(JSON.stringify(loadSessions(), null, 2), "application/json",
+      "rehabilitacion-visual-historial.json");
+  }
+
+  // Exportación CSV (una fila por estímulo), con separador «;» y decimales con
+  // coma para abrirse directamente en Excel/Calc en español.
+  function exportCsv() {
+    const dec = (v, n) => (v == null ? "" : v.toFixed(n).replace(".", ","));
+    const rows = [[
+      "sesion_id", "fecha", "modo", "estimulo_n", "x_pct", "y_pct",
+      "marca_x_pct", "marca_y_pct", "error_radios", "tiempo_ms", "acierto", "no_visto",
+    ]];
+    loadSessions().forEach((s) => {
+      (s.stimuli || []).forEach((st, i) => {
+        rows.push([
+          s.id, s.date, s.mode, i + 1, dec(st.x, 2), dec(st.y, 2),
+          dec(st.markX, 2), dec(st.markY, 2), dec(st.dist, 3),
+          st.rt != null ? st.rt : "", st.hit ? 1 : 0, st.skipped ? 1 : 0,
+        ]);
+      });
+    });
+    downloadBlob("\uFEFF" + rows.map((r) => r.join(";")).join("\r\n"),
+      "text/csv;charset=utf-8", "rehabilitacion-visual-historial.csv");
+  }
+
+  // Importación de un JSON exportado: fusiona con lo existente (sin duplicar
+  // por id) y reordena cronológicamente.
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        let data = JSON.parse(reader.result);
+        if (data && !Array.isArray(data) && Array.isArray(data.sessions)) data = data.sessions;
+        if (!Array.isArray(data)) throw new Error("formato");
+        const valid = data.filter((s) => s && typeof s.id === "number" && Array.isArray(s.stimuli));
+        if (!valid.length) throw new Error("vacío");
+        const cur = loadSessions();
+        const ids = {};
+        cur.forEach((s) => { ids[s.id] = true; });
+        let added = 0;
+        valid.forEach((s) => { if (!ids[s.id]) { cur.push(s); ids[s.id] = true; added++; } });
+        cur.sort((a, b) => a.id - b.id);
+        saveSessions(cur);
+        renderHistory();
+        alert("Importación completada: " + added + " sesión(es) nueva(s). Total: " + cur.length + ".");
+      } catch (e) {
+        alert("El archivo no es un historial válido de esta aplicación.");
+      }
+    };
+    reader.readAsText(file);
   }
 
   function init() {

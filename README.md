@@ -1,4 +1,4 @@
-# App de Rehabilitación Visual
+# App de Rehabilitación Visual (v3.0)
 
 Aplicación de escritorio (web) para un ejercicio de **rehabilitación visual**:
 fijas la mirada en una figura central y, cuando percibes un estímulo en la
@@ -59,6 +59,13 @@ Atajo durante el ejercicio: `Esc` sale.
     gomet antes de pasar al siguiente).
   - Tiempo tras el cual aparece la franja **“No la veo”**.
 - **Ejercicio**
+  - **Cuenta atrás 3-2-1** antes del primer estímulo, para fijar la mirada.
+  - **Aparición aleatoria** del estímulo (retardo configurable): evita
+    respuestas rítmicas por anticipación; los toques durante la espera se
+    ignoran.
+  - **Pantalla siempre encendida** durante la prueba (Wake Lock) y **aviso al
+    salir** de la página con un ejercicio en curso.
+  - **Vibración de feedback** en móviles compatibles (activable).
   - Se ejecuta a **pantalla completa** y el lienzo se ajusta al área realmente
     visible, de modo que ningún estímulo queda fuera de pantalla.
   - **Orientación**: en móvil/tablet, si configuras en vertical, al empezar te
@@ -82,8 +89,10 @@ Atajo durante el ejercicio: `Esc` sale.
   - La app compara tu marca con la posición real del estímulo y decide
     acierto/fallo según la tolerancia configurada.
   - Métricas por sesión: precisión, aciertos, no vistos, **error medio**
-    (en radios del estímulo), **tiempo medio** de respuesta y **sesgo
-    direccional** del error.
+    (en radios del estímulo), **tiempo medio** de respuesta, **sesgo
+    direccional** del error, **duración** y **precisión por hemicampos**
+    (izquierdo/derecho y superior/inferior, resaltando en rojo el lado más
+    débil — clave para ver la zona afectada del campo visual).
   - Puedes corregir manualmente cualquier juicio en el dashboard.
 - **Registro y evolución**
   - Cada sesión se guarda localmente (`localStorage`).
@@ -97,7 +106,13 @@ Atajo durante el ejercicio: `Esc` sale.
     seleccionada) y **dos mapas de fallos**: el de esa sesión y el **acumulado
     hasta esa sesión**.
   - **Borrado selectivo**: elimina una sesión concreta (🗑) o todo el historial.
-  - Exportar el historial a JSON.
+  - **Exportar** el historial a **JSON** (copia de seguridad) o a **CSV**
+    (una fila por estímulo, listo para Excel/Calc en español).
+  - **Importar** un JSON exportado: fusiona sin duplicar (para restaurar una
+    copia o mover los datos a otro dispositivo).
+  - Los gráficos numeran las sesiones en el eje X.
+  - **La configuración se recuerda** entre usos (número de estímulos, colores,
+    tiempos, etc.).
 - **Refuerzo adaptativo** (opcional): las próximas sesiones aumentan la
   frecuencia de estímulos en las zonas donde más se falla.
 - **Supervisión por cámara** (opcional): vista previa de webcam durante el
