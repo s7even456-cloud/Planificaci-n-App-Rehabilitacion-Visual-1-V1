@@ -385,17 +385,16 @@ button.link {
    Aparece tras un tiempo y se activa con doble clic / doble toque en cualquier
    punto de la franja. El centro queda libre para marcar si se percibe la X. */
 .skip-frame {
-  position: fixed; inset: 0; z-index: 6; pointer-events: none;
+  position: fixed; inset: 0; z-index: 2; pointer-events: none;
   --frame: clamp(58px, 12vmin, 128px);
   animation: skip-in 0.28s ease;
 }
 .skip-edge {
-  position: fixed; pointer-events: auto; cursor: pointer;
-  color: #fff;
+  position: fixed; pointer-events: none;   /* solo visual: el toque lo gestiona el ejercicio */
+  color: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #2f6f5e 0%, #3f8f76 55%, #2f6f5e 100%);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.30),
-              0 0 18px rgba(47, 111, 94, 0.35);
+  background: rgba(255, 255, 255, 0.48);   /* translúcida clara: no oculta los estímulos */
+  box-shadow: inset 0 0 0 2px rgba(47, 111, 94, 0.45);
   animation: skip-glow 1.8s ease-in-out infinite;
 }
 .skip-edge.top    { top: 0;    left: 0; right: 0; height: var(--frame); }
@@ -407,13 +406,13 @@ button.link {
   display: flex; align-items: center; gap: 10px;
   font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
   font-size: clamp(0.72rem, 1.8vw, 0.98rem);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 .skip-ico {
   display: inline-flex; align-items: center; justify-content: center;
   width: 1.7em; height: 1.7em; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  background: rgba(47, 111, 94, 0.12);
+  border: 1.5px solid rgba(47, 111, 94, 0.6);
   font-size: 1.05em; font-weight: 700;
 }
 /* En los laterales el texto se escribe en vertical */
@@ -594,7 +593,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.0</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.1</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -1155,7 +1154,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.0";
+  const APP_VERSION = "5.1";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -1680,10 +1679,23 @@ button.link {
     ring.style.top = e.clientY + "px";
   }
 
+  // ¿El punto cae dentro de la banda perimetral (grosor th en píxeles)?
+  function inBandArea(x, y, th) {
+    return x < th || y < th || x > window.innerWidth - th || y > window.innerHeight - th;
+  }
+
   function onPointerDown(e) {
-    // Ignorar pulsaciones sobre la franja "No la veo" (tiene su propio manejador)
-    // o si estamos en el tiempo de visualización tras una marca.
-    if (e.target.closest(".skip-edge")) return;
+    // La banda es solo visual (pointer-events none): si está visible y el toque
+    // cae en su zona, se interpreta como intento de salto (doble toque). Un
+    // toque simple fuera de la banda marca el estímulo con total normalidad.
+    if (!$("#skip-frame").classList.contains("hidden") &&
+        inBandArea(e.clientX, e.clientY, frameThicknessPx())) {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastSkipTap < DBLTAP_MS) { lastSkipTap = 0; registerSkip(); }
+      else { lastSkipTap = now; }
+      return;
+    }
     if (locked) return;
     e.preventDefault();
     placeMark(e.clientX, e.clientY);
@@ -2602,16 +2614,44 @@ button.link {
   // Letras: se anuncian en el idioma de la interfaz (el TTS pronuncia el nombre
   // de la letra en ese idioma). En español se usan los nombres explícitos.
   function speakLetter(ch) {
-    if (curLangCode === "es") return speak("Letra " + (LETTER_NAMES[ch.toUpperCase()] || ch));
-    return speak(t("ex.speakLetter") + " " + ch.toUpperCase());
+    if (exLang() === "es") return speak("Letra " + (LETTER_NAMES[ch.toUpperCase()] || ch));
+    return speak(t("ex.speakLetter") + " " + ch.toUpperCase(), exTts());
   }
-  // Palabras: son contenido del ejercicio (banco en español) → siempre es-ES.
-  function speakWord(w) { return speak(w.toLowerCase(), "es-ES"); }
+  // Palabras: se pronuncian en el idioma del contenido del ejercicio.
+  function speakWord(w) { return speak(w.toLowerCase(), exTts()); }
 
   // =====================================================================
   //  Block2Controller: ejercicio de letras
   // =====================================================================
   const ALPHABET = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+  // Alfabeto y banco de palabras POR IDIOMA (los 11 completos). Los idiomas
+  // parciales usan el contenido en inglés. Palabras sin tildes/diéresis.
+  const LATIN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const B2_CONTENT = {
+    es: { alpha: "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ", words: null },   // null → WORD_BANK original
+    ca: { alpha: LATIN, words: ["CASA","TAULA","LLUNA","GAT","PORTA","FLOR","ROSA","LLIBRE","CEL","PA","SOL","VERD","PAPER","PEIX","TERRA","VENT","FINESTRA"] },
+    va: { alpha: LATIN, words: ["CASA","TAULA","LLUNA","GAT","PORTA","FLOR","ROSA","LLIBRE","CEL","PA","SOL","VERD","PAPER","PEIX","TERRA","VENT","FINESTRA"] },
+    gl: { alpha: "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ", words: ["CASA","MESA","LUA","GATO","PORTA","FLOR","AUGA","LIBRO","CEO","PAN","SOL","VERDE","PAPEL","PEIXE","TERRA","VENTO","MONTE"] },
+    eu: { alpha: LATIN, words: ["ETXE","MENDI","ESKU","BEGI","KATU","OGI","URA","LORE","ZERU","GAU","EGUN","HAUR","BURU","ZUBI","ITSASO","EGUZKI"] },
+    en: { alpha: LATIN, words: ["HOUSE","TABLE","MOON","CAT","HAND","WATER","FLOWER","DOOR","BOOK","SKY","BREAD","SUN","GREEN","PAPER","TREE","FISH","WINDOW"] },
+    pt: { alpha: LATIN, words: ["CASA","MESA","LUA","GATO","PATO","PORTA","LIVRO","SOL","VERDE","PAPEL","PEIXE","FLOR","TERRA","VENTO","JANELA","MONTE"] },
+    it: { alpha: "ABCDEFGHILMNOPQRSTUVZ", words: ["CASA","LUNA","GATTO","MANO","ACQUA","FIORE","PORTA","LIBRO","CIELO","PANE","SOLE","VERDE","CARTA","PESCE","TERRA","VENTO"] },
+    fr: { alpha: LATIN, words: ["MAISON","TABLE","LUNE","CHAT","MAIN","EAU","FLEUR","PORTE","LIVRE","CIEL","PAIN","SOLEIL","VERT","PAPIER","ARBRE","VENT"] },
+    de: { alpha: LATIN, words: ["HAUS","TISCH","MOND","KATZE","HAND","WASSER","BLUME","BUCH","HIMMEL","BROT","SONNE","BAUM","FISCH","ERDE","WIND","LAMPE"] },
+    ru: { alpha: "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ", words: ["ДОМ","КОТ","ХЛЕБ","ВОДА","РУКА","НОГА","ОКНО","ЛУНА","МОРЕ","НЕБО","СТОЛ","ГОРА","РЕКА","ЛЕТО","ЗИМА","ГОРОД"] },
+  };
+  // Idioma del contenido del ejercicio: el de la interfaz si está completo.
+  function exLang() { return B2_CONTENT[curLangCode] ? curLangCode : "en"; }
+  function exAlphabet() { return B2_CONTENT[exLang()].alpha.split(""); }
+  function exWords() {
+    const w = B2_CONTENT[exLang()].words;
+    return w || WORD_BANK;
+  }
+  function exTts() {
+    const code = exLang() === "va" ? "ca" : exLang();
+    const L = LANGS.find(function (l) { return l[0] === code; });
+    return L ? L[3] : "es-ES";
+  }
   // Banco de palabras cortas y comunes (sin tildes; la Ñ se conserva).
   const WORD_BANK = [
     "SOL", "PAN", "MAR", "SAL", "PIE", "LUZ", "RIO", "OSO", "UVA", "ALA",
@@ -2630,7 +2670,7 @@ button.link {
   }
   // Normalización de vocales acentuadas (la Ñ se conserva).
   function normLetter(ch) {
-    const map = { "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U", "Ü": "U" };
+    const map = { "Á":"A","É":"E","Í":"I","Ó":"O","Ú":"U","Ü":"U","À":"A","È":"E","Ì":"I","Ò":"O","Ù":"U","Â":"A","Ê":"E","Î":"I","Ô":"O","Û":"U","Ä":"A","Ë":"E","Ï":"I","Ö":"O","Ç":"C","Ё":"Е" };
     const up = ch.toUpperCase();
     return map[up] || up;
   }
@@ -2704,9 +2744,9 @@ button.link {
   // ---- Construcción del conjunto de letras visibles ----
   // Las 5 vocales aparecen SIEMPRE, además de las letras necesarias (palabras).
   function b2BuildLetterSet(cfg, needed) {
-    const base = ALPHABET.filter((l) => l !== "Ñ" || cfg.enye);
+    const base = exAlphabet().filter((l) => l !== "Ñ" || cfg.enye);
     const chosen = {};
-    ["A", "E", "I", "O", "U"].forEach((v) => { chosen[v] = true; });
+    ["A", "E", "I", "O", "U"].forEach((v) => { if (base.indexOf(v) >= 0) chosen[v] = true; });
     (needed || []).forEach((l) => { chosen[l] = true; });
     const out = Object.keys(chosen);
     const pool = shuffleArr(base.filter((l) => !chosen[l]));
@@ -2805,9 +2845,10 @@ button.link {
     saveBlockConfig("block2", cfg);
     let targets = [], needed = [];
     if (cfg.mode === "word-sequence") {
-      let words = WORD_BANK.filter((w) => w.length >= cfg.wmin && w.length <= cfg.wmax);
+      const bank = exWords();
+      let words = bank.filter((w) => w.length >= cfg.wmin && w.length <= cfg.wmax);
       if (!cfg.enye) words = words.filter((w) => w.indexOf("Ñ") < 0);
-      if (!words.length) words = WORD_BANK.filter((w) => cfg.enye || w.indexOf("Ñ") < 0);
+      if (!words.length) words = bank.filter((w) => cfg.enye || w.indexOf("Ñ") < 0);
       words = shuffleArr(words.slice());
       while (words.length < cfg.count) words = words.concat(shuffleArr(words.slice()));
       targets = words.slice(0, cfg.count);
@@ -2952,6 +2993,15 @@ button.link {
 
   function onB2Tap(e) {
     if (!b2 || b2.state !== "running") return;
+    // Toque en la zona de la banda (visible): lógica de salto por doble toque.
+    if (!$("#b2-skip-frame").classList.contains("hidden") &&
+        inBandArea(e.clientX, e.clientY, b2FramePx())) {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - b2LastSkipTap < DBLTAP_MS) { b2LastSkipTap = 0; b2Skip(); }
+      else { b2LastSkipTap = now; }
+      return;
+    }
     const el = e.target.closest(".b2-letter");
     if (!el) return;
     e.preventDefault();
@@ -2993,6 +3043,7 @@ button.link {
       cur.lastT = now;
       cur.pos++;
       b2FlashLetter(letter, true); sndOk(); vibrate(35);
+      b2ArmSkipFrame();   // ocultar la banda y rearmar su temporizador con cada acierto
       $("#b2-hint").textContent = t("ex.wordProg", cur.pos, cur.word.length);
       if (cur.pos >= cur.word.length) {
         b2.attempts.push({
@@ -3444,7 +3495,7 @@ button.link {
   ];
 
   const ES = {
-    "nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…","lang.partial":"parcial",
+    "app.name":"Rehabilitación Visual","nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…","lang.partial":"parcial",
     "pf.subtitle":"Selecciona un perfil para empezar, o crea uno nuevo. Cada perfil guarda sus propias sesiones, resultados y configuraciones.",
     "pf.create":"Crear perfil nuevo","pf.first":"Nombre","pf.last":"Apellido(s)","pf.createBtn":"Crear perfil",
     "pf.privacy":"Los datos se almacenan localmente en este dispositivo. Realiza copias de seguridad periódicas mediante la función Exportar.",
@@ -3485,7 +3536,7 @@ button.link {
     "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.state":"estado","b2.tries":"intentos",
   };
   const EN = {
-    "nav.menu":"Menu","nav.switch":"Switch user","nav.cancel":"Cancel","lang.search":"Search language…","lang.partial":"partial",
+    "app.name":"Visual Rehabilitation","nav.menu":"Menu","nav.switch":"Switch user","nav.cancel":"Cancel","lang.search":"Search language…","lang.partial":"partial",
     "pf.subtitle":"Select a profile to start, or create a new one. Each profile keeps its own sessions, results and settings.",
     "pf.create":"Create new profile","pf.first":"First name","pf.last":"Last name(s)","pf.createBtn":"Create profile",
     "pf.privacy":"Data is stored locally on this device. Make regular backups using the Export function.",
@@ -3526,7 +3577,7 @@ button.link {
     "b2.modA":"Letter search","b2.modB":"Word building","b2.state":"status","b2.tries":"attempts",
   };
   const CA = {
-    "nav.menu":"Menú","nav.switch":"Canviar d'usuari","nav.cancel":"Cancel·lar","lang.search":"Cercar idioma…","lang.partial":"parcial",
+    "app.name":"Rehabilitació Visual","nav.menu":"Menú","nav.switch":"Canviar d'usuari","nav.cancel":"Cancel·lar","lang.search":"Cercar idioma…","lang.partial":"parcial",
     "pf.subtitle":"Selecciona un perfil per començar, o crea'n un de nou. Cada perfil desa les seves sessions, resultats i configuracions.",
     "pf.create":"Crear un perfil nou","pf.first":"Nom","pf.last":"Cognom(s)","pf.createBtn":"Crear perfil",
     "pf.privacy":"Les dades es desen localment en aquest dispositiu. Fes còpies de seguretat periòdiques amb la funció Exportar.",
@@ -3567,14 +3618,14 @@ button.link {
     "b2.modA":"Localitzar lletra","b2.modB":"Formar paraula","b2.state":"estat","b2.tries":"intents",
   };
   const VA = Object.assign({}, CA, {
-    "nav.switch":"Canviar d'usuari","ex.confirmExit":"Finalitzar l'exercici? Es perdrà la sessió actual.",
+    "app.name":"Rehabilitació Visual","nav.switch":"Canviar d'usuari","ex.confirmExit":"Finalitzar l'exercici? Es perdrà la sessió actual.",
     "h.home":"Tornar a l'inici","ex.resume":"Reprendre","bias.down":"avall","bias.up":"amunt",
     "pf.subtitle":"Selecciona un perfil per a començar, o crea'n un de nou. Cada perfil guarda les seues sessions, resultats i configuracions.",
     "pf.privacy":"Les dades es guarden localment en este dispositiu. Fes còpies de seguretat periòdiques amb la funció Exportar.",
     "r.save":"Guardar resultats","h.none":"Encara no hi ha sessions guardades.",
   });
   const GL = Object.assign({}, ES, {
-    "nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…",
+    "app.name":"Rehabilitación Visual","nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…",
     "pf.subtitle":"Selecciona un perfil para comezar, ou crea un novo. Cada perfil garda as súas sesións, resultados e configuracións.",
     "pf.create":"Crear un perfil novo","pf.first":"Nome","pf.last":"Apelido(s)","pf.createBtn":"Crear perfil",
     "pf.privacy":"Os datos gárdanse localmente neste dispositivo. Fai copias de seguridade periódicas coa función Exportar.",
@@ -3611,7 +3662,8 @@ button.link {
     "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.state":"estado","b2.tries":"intentos",
   });
   const EU = Object.assign({}, EN, {
-    "nav.menu":"Menua","nav.switch":"Erabiltzailea aldatu","nav.cancel":"Utzi","lang.search":"Hizkuntza bilatu…",
+    "st.precFirst":"Zehaztasuna (1. saiakera)","st.precLetters":"Letren zehaztasuna","st.firstTry":"Lehenengoan asmatuak","st.wordsDone":"Osatutako hitzak","st.incomplete":"Osatu gabeak","st.meanErr":"Batez besteko errorea (erradioak)","st.meanWord":"Denbora/hitz","st.meanLetter":"Denbora/letra","st.firstSel":"1. hautaketara arte","st.audioReps":"Audio-errepikapenak","h.bestT":"Denbora onena","h.best":"Saio onena","h.hits2":"asmatuak","h.view":"Panela ikusi ▸","h.accAll":"Metatua (denak)","h.lastSes":"Azken saioa",
+    "app.name":"Ikusmen-errehabilitazioa","nav.menu":"Menua","nav.switch":"Erabiltzailea aldatu","nav.cancel":"Utzi","lang.search":"Hizkuntza bilatu…",
     "pf.subtitle":"Hautatu profil bat hasteko, edo sortu berri bat. Profil bakoitzak bere saioak, emaitzak eta ezarpenak gordetzen ditu.",
     "pf.create":"Profil berria sortu","pf.first":"Izena","pf.last":"Abizena(k)","pf.createBtn":"Profila sortu",
     "pf.privacy":"Datuak gailu honetan gordetzen dira lokalki. Egin babeskopiak aldian-aldian Esportatu funtzioarekin.",
@@ -3645,7 +3697,7 @@ button.link {
     "b2.modA":"Letra aurkitu","b2.modB":"Hitza osatu","b2.state":"egoera","b2.tries":"saiakerak",
   });
   const PT = Object.assign({}, ES, {
-    "nav.menu":"Menu","nav.switch":"Mudar de utilizador","nav.cancel":"Cancelar","lang.search":"Procurar idioma…",
+    "app.name":"Reabilitação Visual","nav.menu":"Menu","nav.switch":"Mudar de utilizador","nav.cancel":"Cancelar","lang.search":"Procurar idioma…",
     "pf.subtitle":"Seleciona um perfil para começar, ou cria um novo. Cada perfil guarda as suas sessões, resultados e configurações.",
     "pf.create":"Criar novo perfil","pf.first":"Nome","pf.last":"Apelido(s)","pf.createBtn":"Criar perfil",
     "pf.privacy":"Os dados são guardados localmente neste dispositivo. Faz cópias de segurança periódicas com a função Exportar.",
@@ -3683,7 +3735,8 @@ button.link {
     "b2.modA":"Localizar letra","b2.modB":"Formar palavra","b2.state":"estado","b2.tries":"tentativas",
   });
   const IT = Object.assign({}, EN, {
-    "nav.menu":"Menu","nav.switch":"Cambia utente","nav.cancel":"Annulla","lang.search":"Cerca lingua…",
+    "st.precFirst":"Precisione (1º tentativo)","st.precLetters":"Precisione lettere","st.firstTry":"Corretti al 1º colpo","st.wordsDone":"Parole completate","st.incomplete":"Incomplete","st.meanErr":"Errore medio (raggi)","st.meanWord":"Tempo medio/parola","st.meanLetter":"Tempo medio/lettera","st.firstSel":"Alla 1ª selezione","st.audioReps":"Ripetizioni audio","h.bestT":"Miglior tempo medio","h.best":"Migliore sessione","h.hits2":"corretti","h.view":"Vedi dashboard ▸","h.accAll":"Accumulato (tutte)","h.lastSes":"Ultima sessione",
+    "app.name":"Riabilitazione Visiva","nav.menu":"Menu","nav.switch":"Cambia utente","nav.cancel":"Annulla","lang.search":"Cerca lingua…",
     "pf.subtitle":"Seleziona un profilo per iniziare, o creane uno nuovo. Ogni profilo conserva le proprie sessioni, risultati e impostazioni.",
     "pf.create":"Crea nuovo profilo","pf.first":"Nome","pf.last":"Cognome/i","pf.createBtn":"Crea profilo",
     "pf.privacy":"I dati sono salvati localmente su questo dispositivo. Esegui backup periodici con la funzione Esporta.",
@@ -3717,7 +3770,8 @@ button.link {
     "b2.modA":"Trova la lettera","b2.modB":"Forma la parola","b2.state":"stato","b2.tries":"tentativi",
   });
   const FR = Object.assign({}, EN, {
-    "nav.menu":"Menu","nav.switch":"Changer d'utilisateur","nav.cancel":"Annuler","lang.search":"Rechercher une langue…",
+    "st.precFirst":"Précision (1er essai)","st.precLetters":"Précision des lettres","st.firstTry":"Réussites du 1er coup","st.wordsDone":"Mots complétés","st.incomplete":"Incomplets","st.meanErr":"Erreur moyenne (rayons)","st.meanWord":"Temps moyen/mot","st.meanLetter":"Temps moyen/lettre","st.firstSel":"Jusqu'à la 1re sélection","st.audioReps":"Répétitions audio","h.bestT":"Meilleur temps moyen","h.best":"Meilleure session","h.hits2":"réussites","h.view":"Voir le tableau ▸","h.accAll":"Cumulé (toutes)","h.lastSes":"Dernière session",
+    "app.name":"Rééducation Visuelle","nav.menu":"Menu","nav.switch":"Changer d'utilisateur","nav.cancel":"Annuler","lang.search":"Rechercher une langue…",
     "pf.subtitle":"Sélectionne un profil pour commencer, ou crées-en un nouveau. Chaque profil conserve ses sessions, résultats et réglages.",
     "pf.create":"Créer un nouveau profil","pf.first":"Prénom","pf.last":"Nom(s)","pf.createBtn":"Créer le profil",
     "pf.privacy":"Les données sont stockées localement sur cet appareil. Effectue des sauvegardes régulières avec la fonction Exporter.",
@@ -3751,7 +3805,8 @@ button.link {
     "b2.modA":"Trouver la lettre","b2.modB":"Former le mot","b2.state":"état","b2.tries":"essais",
   });
   const DE = Object.assign({}, EN, {
-    "nav.menu":"Menü","nav.switch":"Benutzer wechseln","nav.cancel":"Abbrechen","lang.search":"Sprache suchen…",
+    "st.precFirst":"Genauigkeit (1. Versuch)","st.precLetters":"Buchstaben-Genauigkeit","st.firstTry":"Treffer beim 1. Versuch","st.wordsDone":"Wörter abgeschlossen","st.incomplete":"Unvollständig","st.meanErr":"Mittlerer Fehler (Radien)","st.meanWord":"Mittl. Zeit/Wort","st.meanLetter":"Mittl. Zeit/Buchstabe","st.firstSel":"Bis zur 1. Auswahl","st.audioReps":"Audio-Wiederholungen","h.bestT":"Beste mittlere Zeit","h.best":"Beste Sitzung","h.hits2":"Treffer","h.view":"Dashboard ansehen ▸","h.accAll":"Kumuliert (alle)","h.lastSes":"Letzte Sitzung",
+    "app.name":"Visuelle Rehabilitation","nav.menu":"Menü","nav.switch":"Benutzer wechseln","nav.cancel":"Abbrechen","lang.search":"Sprache suchen…",
     "pf.subtitle":"Wähle ein Profil zum Starten oder lege ein neues an. Jedes Profil speichert eigene Sitzungen, Ergebnisse und Einstellungen.",
     "pf.create":"Neues Profil anlegen","pf.first":"Vorname","pf.last":"Nachname(n)","pf.createBtn":"Profil anlegen",
     "pf.privacy":"Die Daten werden lokal auf diesem Gerät gespeichert. Erstelle regelmäßig Sicherungen über die Export-Funktion.",
@@ -3785,7 +3840,8 @@ button.link {
     "b2.modA":"Buchstaben finden","b2.modB":"Wort bilden","b2.state":"Status","b2.tries":"Versuche",
   });
   const RU = Object.assign({}, EN, {
-    "nav.menu":"Меню","nav.switch":"Сменить пользователя","nav.cancel":"Отмена","lang.search":"Поиск языка…",
+    "st.precFirst":"Точность (1-я попытка)","st.precLetters":"Точность букв","st.firstTry":"С первой попытки","st.wordsDone":"Слов завершено","st.incomplete":"Незавершённые","st.meanErr":"Средняя ошибка (радиусы)","st.meanWord":"Ср. время/слово","st.meanLetter":"Ср. время/буква","st.firstSel":"До 1-го выбора","st.audioReps":"Повторы аудио","h.bestT":"Лучшее ср. время","h.best":"Лучший сеанс","h.hits2":"попаданий","h.view":"Открыть панель ▸","h.accAll":"Суммарно (все)","h.lastSes":"Последний сеанс",
+    "app.name":"Зрительная реабилитация","nav.menu":"Меню","nav.switch":"Сменить пользователя","nav.cancel":"Отмена","lang.search":"Поиск языка…",
     "pf.subtitle":"Выберите профиль, чтобы начать, или создайте новый. Каждый профиль хранит свои сеансы, результаты и настройки.",
     "pf.create":"Создать новый профиль","pf.first":"Имя","pf.last":"Фамилия","pf.createBtn":"Создать профиль",
     "pf.privacy":"Данные хранятся локально на этом устройстве. Регулярно делайте резервные копии с помощью функции «Экспорт».",
@@ -3864,6 +3920,7 @@ button.link {
   }
   // [selector, clave] — textos estáticos sin data-i18n (formularios, títulos…)
   const DOM_MAP = [
+    ["#screen-profiles h1", "app.name"],
     ["#screen-profiles .subtitle", "pf.subtitle"],
     ["#screen-profiles legend", "pf.create"],
     ["#profile-form .field:nth-of-type(1)>span", "pf.first"],
@@ -3912,6 +3969,7 @@ button.link {
     try { localStorage.setItem(LANG_KEY, curLangCode); } catch (e) { /* nada */ }
     const L = langDef();
     document.documentElement.lang = curLangCode;
+    document.title = t("app.name");
     document.documentElement.dir = L[4] ? "rtl" : "ltr";
     $("#lang-cur-flag").innerHTML = flagHtml(L).replace(/<\/?span[^>]*>/g, function (m) { return m.indexOf("img") >= 0 ? m : ""; }) || "";
     $("#lang-cur-flag").innerHTML = L[2].indexOf("data:") === 0 ? '<img alt="" src="' + L[2] + '">' : L[2];
