@@ -83,6 +83,12 @@ html, body {
   align-items: flex-start;
 }
 
+/* ---------- Accesibilidad: foco visible con teclado ---------- */
+button:focus-visible, input:focus-visible, select:focus-visible,
+.profile-card:focus-visible, .history-row:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+
 /* ---------- Barra superior con el usuario activo ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 20;
@@ -531,7 +537,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v4.0</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v4.2</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -761,7 +767,6 @@ button.link {
            <b>horizontal</b>. La prueba empezará automáticamente al girarlo.</p>
         <div class="rotate-actions">
           <button type="button" id="btn-rotate-cancel" class="ghost">Cancelar</button>
-          <button type="button" id="btn-continue-portrait" class="ghost">Continuar en vertical</button>
         </div>
       </div>
     </div>
@@ -905,6 +910,8 @@ button.link {
 
         <fieldset>
           <legend>Voz e instrucciones</legend>
+          <label class="field"><span>Voz</span>
+            <select id="b2-voice"><option value="">Automática (española)</option></select></label>
           <label class="field"><span>Velocidad de la voz: <output id="b2-out-rate">0.9</output></span>
             <input type="range" id="b2-rate" min="0.5" max="1.5" step="0.1" value="0.9" /></label>
           <label class="field"><span>Volumen: <output id="b2-out-vol">1.0</output></span>
@@ -1077,7 +1084,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "4.0";
+  const APP_VERSION = "4.2";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -1832,12 +1839,14 @@ button.link {
 
   const pct = (v) => Math.round(v * 100) + "%";
 
-  // Duración en formato m:ss.
+  // Duración en formato m:ss (o h:mm:ss a partir de una hora).
   function fmtDur(ms) {
     const s = Math.round(ms / 1000);
-    const m = Math.floor(s / 60);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     const r = s % 60;
-    return m + ":" + (r < 10 ? "0" : "") + r;
+    const p2 = (n) => (n < 10 ? "0" : "") + n;
+    return h ? h + ":" + p2(m) + ":" + p2(r) : m + ":" + p2(r);
   }
 
   // =====================================================================
@@ -2315,6 +2324,9 @@ button.link {
     list.forEach((p) => {
       const card = document.createElement("div");
       card.className = "profile-card";
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", "Seleccionar perfil de " + p.firstName + " " + p.lastName);
       const star = p.id === lastActive ? " ⭐" : "";
       card.innerHTML =
         '<span><span class="p-name">' + escapeHtml(p.firstName + " " + p.lastName) + star + "</span><br>" +
@@ -2322,12 +2334,15 @@ button.link {
         " · Última sesión: " + fmtDate(lastSessionTime(p.id)) +
         " · Sesiones: " + sessionCount(p.id) + "</span></span>" +
         '<span class="p-actions">' +
-        '<button type="button" class="p-edit" title="Editar">✏</button>' +
-        '<button type="button" class="p-del" title="Eliminar">🗑</button></span>';
+        '<button type="button" class="p-edit" title="Editar" aria-label="Editar perfil">✏</button>' +
+        '<button type="button" class="p-del" title="Eliminar" aria-label="Eliminar perfil">🗑</button></span>';
       card.addEventListener("click", (e) => {
         if (e.target.closest(".p-edit")) { editProfile(p.id); return; }
         if (e.target.closest(".p-del")) { deleteProfile(p.id); return; }
         selectProfile(p.id);
+      });
+      card.addEventListener("keydown", (e) => {
+        if (e.code === "Enter" || e.code === "Space") { e.preventDefault(); selectProfile(p.id); }
       });
       wrap.appendChild(card);
     });
@@ -2401,6 +2416,7 @@ button.link {
   }
 
   function switchUser() {
+    if (!leaveGuard()) return;
     activeProfileId = null;
     renderProfiles();
     showScreen("#screen-profiles");
@@ -2409,7 +2425,19 @@ button.link {
   // =====================================================================
   //  Menú de bloques y vista general del perfil
   // =====================================================================
+  // Evita perder un resultado sin guardar al salir de una pantalla de resultado.
+  function leaveGuard() {
+    const onR1 = $("#screen-result").classList.contains("active") && pendingRecord;
+    const onR2 = $("#screen-b2-result").classList.contains("active") && pendingB2;
+    if (onR1 || onR2) {
+      if (!confirm("Hay un resultado sin guardar. ¿Salir y descartarlo?")) return false;
+      pendingRecord = null; pendingB2 = null; session = null;
+    }
+    return true;
+  }
+
   function openMenu() {
+    if (!leaveGuard()) return;
     const p = activeProfile();
     $("#menu-greeting").textContent = "Perfil activo: " + p.firstName + " " + p.lastName +
       ". Elige un ejercicio o gestiona los datos.";
@@ -2432,13 +2460,33 @@ button.link {
   function speechAvailable() {
     return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
   }
-  function esVoice() {
+  function spanishVoices() {
     try {
-      const vs = speechSynthesis.getVoices() || [];
-      let v = vs.find((x) => x.lang && x.lang.toLowerCase().indexOf("es") === 0 && x.localService);
-      if (!v) v = vs.find((x) => x.lang && x.lang.toLowerCase().indexOf("es") === 0);
-      return v || null;
-    } catch (e) { return null; }
+      return (speechSynthesis.getVoices() || [])
+        .filter((x) => x.lang && x.lang.toLowerCase().indexOf("es") === 0);
+    } catch (e) { return []; }
+  }
+  function esVoice(wantedURI) {
+    const vs = spanishVoices();
+    if (wantedURI) {
+      const w = vs.find((x) => x.voiceURI === wantedURI);
+      if (w) return w;
+    }
+    return vs.find((x) => x.localService) || vs[0] || null;
+  }
+  // Rellena el selector de voces españolas (las voces cargan de forma asíncrona).
+  function populateVoices() {
+    const sel = $("#b2-voice");
+    if (!sel || !speechAvailable()) return;
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Automática (española)</option>';
+    spanishVoices().forEach((v) => {
+      const o = document.createElement("option");
+      o.value = v.voiceURI;
+      o.textContent = v.name + " (" + v.lang + ")";
+      sel.appendChild(o);
+    });
+    if (prev) sel.value = prev;   // conservar la selección si sigue disponible
   }
   function speak(text) {
     if (!speechAvailable()) return false;
@@ -2446,9 +2494,10 @@ button.link {
       speechSynthesis.cancel();     // evitar locuciones solapadas
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "es-ES";
-      const v = esVoice(); if (v) u.voice = v;
       const cfg = (b2 && b2.config) ? b2.config : null;
-      u.rate = cfg ? cfg.rate : 0.9;
+      const v = esVoice(cfg ? cfg.voice : $("#b2-voice") ? $("#b2-voice").value : "");
+      if (v) u.voice = v;
+      u.rate = cfg ? cfg.rate : parseFloat($("#b2-rate").value || 0.9);
       u.volume = cfg ? cfg.volume : 1;
       speechSynthesis.speak(u);
       return true;
@@ -2513,6 +2562,7 @@ button.link {
       excl: parseFloat($("#b2-excl").value),
       rate: parseFloat($("#b2-rate").value),
       volume: parseFloat($("#b2-vol").value),
+      voice: $("#b2-voice").value,
       written: $("#b2-written").checked,
       wmin: parseInt($("#b2-wmin").value, 10),
       wmax: parseInt($("#b2-wmax").value, 10),
@@ -2534,7 +2584,8 @@ button.link {
     set("#b2-case", c.letterCase); set("#b2-enye", c.enye); set("#b2-reshuffle", c.reshuffle);
     set("#b2-min-size", c.minSize); set("#b2-max-size", c.maxSize); set("#b2-exp", c.exp);
     set("#b2-center-size", c.centerSize); set("#b2-excl", c.excl);
-    set("#b2-rate", c.rate); set("#b2-vol", c.volume); set("#b2-written", c.written);
+    set("#b2-rate", c.rate); set("#b2-vol", c.volume); set("#b2-voice", c.voice);
+    set("#b2-written", c.written);
     set("#b2-wmin", c.wmin); set("#b2-wmax", c.wmax); set("#b2-pause", c.pause);
     set("#b2-skip-delay", c.skipDelay);
     set("#b2-sound", c.sound); set("#b2-vibrate", c.vibrate);
@@ -2546,6 +2597,7 @@ button.link {
   };
 
   function openBlock2Config() {
+    populateVoices();
     b2ApplyConfig(getBlockConfig("block2"));
     const warn = $("#b2-voice-warn");
     warn.textContent = speechAvailable()
@@ -2746,7 +2798,9 @@ button.link {
     const spoken = isWord ? speakWord(text) : speakLetter(text);
     const wr = $("#b2-written-target");
     if (cfg.written || !spoken) {
-      wr.textContent = isWord ? text : b2DisplayChar(text, cfg);
+      // Caso coherente: en modo «mezcladas» se muestra en mayúscula fija para
+      // no dar pistas sobre la variante que hay en pantalla.
+      wr.textContent = cfg.letterCase === "lower" ? text.toLowerCase() : text;
       wr.classList.remove("hidden");
     } else {
       wr.classList.add("hidden");
@@ -2784,7 +2838,7 @@ button.link {
     if (b2.config.mode === "letter-search") {
       b2.cur = { target: t, errors: [], t0: b2Now(), audioRepeats: 0 };
     } else {
-      b2.cur = { word: t, pos: 0, errors: [], times: [], lastT: b2Now(), t0: b2Now(),
+      b2.cur = { word: t, pos: 0, errors: [], times: [], presses: [], lastT: b2Now(), t0: b2Now(),
                  firstRt: null, audioRepeats: 0, restarted: 0 };
     }
     b2.state = "running";
@@ -2840,6 +2894,7 @@ button.link {
     if (letter === expected) {
       if (cur.firstRt === null) cur.firstRt = Math.round(now - cur.t0);
       cur.times.push(Math.round(now - cur.lastT));
+      cur.presses.push({ letter: letter, x: pos.x, y: pos.y });   // acierto con posición
       cur.lastT = now;
       cur.pos++;
       b2FlashLetter(letter, true); sndOk(); vibrate(35);
@@ -2848,6 +2903,7 @@ button.link {
         b2.attempts.push({
           word: cur.word, completed: true, skipped: false,
           errors: cur.errors, errorCount: cur.errors.length,
+          presses: cur.presses,
           firstRt: cur.firstRt, totalMs: Math.round(now - cur.t0),
           times: cur.times, letters: cur.word.length,
           audioRepeats: cur.audioRepeats, restarted: cur.restarted,
@@ -2880,6 +2936,7 @@ button.link {
       b2.attempts.push({
         word: cur.word, completed: false, skipped: true,
         errors: cur.errors, errorCount: cur.errors.length,
+        presses: cur.presses,
         firstRt: cur.firstRt, totalMs: Math.round(b2Now() - cur.t0),
         times: cur.times, letters: cur.word.length, lettersDone: cur.pos,
         audioRepeats: cur.audioRepeats, restarted: cur.restarted, timestamp: Date.now(),
@@ -3002,10 +3059,16 @@ button.link {
       const firsts = at.filter((a) => a.firstRt != null);
       acc.meanFirst = firsts.length ? Math.round(firsts.reduce((s, a) => s + a.firstRt, 0) / firsts.length) : null;
       acc.audioRepeats = at.reduce((s, a) => s + (a.audioRepeats || 0), 0);
-      at.forEach((a) => (a.errors || []).forEach((e) => {
-        (e.x < 50 ? hemi.l : hemi.r).push(false);
-        (e.y < 50 ? hemi.t : hemi.b).push(false);
-      }));
+      at.forEach((a) => {
+        (a.presses || []).forEach((p) => {
+          (p.x < 50 ? hemi.l : hemi.r).push(true);
+          (p.y < 50 ? hemi.t : hemi.b).push(true);
+        });
+        (a.errors || []).forEach((e) => {
+          (e.x < 50 ? hemi.l : hemi.r).push(false);
+          (e.y < 50 ? hemi.t : hemi.b).push(false);
+        });
+      });
     }
     const hAcc = (arr) => arr.length ? arr.filter(Boolean).length / arr.length : null;
     acc.hemiL = hAcc(hemi.l); acc.hemiR = hAcc(hemi.r);
@@ -3020,6 +3083,7 @@ button.link {
       if (rec.modeId === "letter-search") {
         if (a.tx != null) pts.push({ x: a.tx, y: a.ty, hit: a.correct && a.errorsBefore === 0 });
       }
+      (a.presses || []).forEach((p) => pts.push({ x: p.x, y: p.y, hit: true }));
       (a.errors || []).forEach((e) => pts.push({ x: e.x, y: e.y, hit: false }));
     });
     return pts;
@@ -3225,7 +3289,7 @@ button.link {
         }
       });
     });
-    downloadBlob("﻿" + rows.map((r) => r.join(";")).join("\r\n"),
+    downloadBlob("\uFEFF" + rows.map((r) => r.join(";")).join("\r\n"),
       "text/csv;charset=utf-8", "bloque2-letras-historial.csv");
   }
 
@@ -3288,7 +3352,6 @@ button.link {
     $("#skip-frame").addEventListener("pointerup", onSkipActivate);
 
     // Aviso de giro a horizontal.
-    $("#btn-continue-portrait").addEventListener("click", () => beginExercise());
     $("#btn-rotate-cancel").addEventListener("click", () => abortToConfig());
 
     // Gráficos responsivos: redibujar al cambiar tamaño u orientación.
@@ -3370,6 +3433,19 @@ button.link {
       const p = B2_PRESETS[$("#b2-preset").value];
       if (p) b2ApplyConfig(p);
     });
+    // Voces: precargar (cargan de forma asíncrona) y refrescar el selector.
+    populateVoices();
+    try {
+      if (window.speechSynthesis) {
+        speechSynthesis.onvoiceschanged = function () {
+          populateVoices();
+          if ($("#screen-b2-config").classList.contains("active") && speechAvailable()) {
+            $("#b2-voice-warn").textContent = "";
+          }
+        };
+      }
+    } catch (e) { /* sin voces */ }
+
     $("#b2-test-voice").addEventListener("click", () => {
       unlockAudio();
       const okV = speak("Ejemplo de voz. Letra eme. Palabra casa.");

@@ -1,4 +1,4 @@
-# Plataforma de Ejercicios de Rehabilitación Visual (v4.0)
+# Plataforma de Ejercicios de Rehabilitación Visual (v4.2)
 
 Plataforma **modular y multiusuario** de ejercicios de exploración y atención
 visual, pensada para rehabilitación del campo visual (p. ej. hemianopsia) bajo
