@@ -1,138 +1,101 @@
-# App de Rehabilitación Visual (v3.0)
+# Plataforma de Ejercicios de Rehabilitación Visual (v4.0)
 
-Aplicación de escritorio (web) para un ejercicio de **rehabilitación visual**:
-fijas la mirada en una figura central y, cuando percibes un estímulo en la
-periferia, lo **marcas digitalmente** (con clic en PC o tocando en pantallas
-táctiles). La app coloca un círculo (gomet digital) y **puntúa automáticamente**
-acierto/fallo según la distancia entre tu marca y el estímulo. Registra tu
-evolución sesión a sesión.
+Plataforma **modular y multiusuario** de ejercicios de exploración y atención
+visual, pensada para rehabilitación del campo visual (p. ej. hemianopsia) bajo
+indicación de un profesional. **No constituye una herramienta diagnóstica** ni
+sustituye una evaluación profesional.
 
-Está construida con HTML, CSS y JavaScript puro (sin dependencias ni paso de
-compilación) y se entrega como **un único archivo `index.html` autocontenido**
-(el CSS y el JavaScript van incrustados), por lo que basta con descargar ese
-archivo y abrirlo: funciona en cualquier navegador de PC, tablet o smartphone.
-El diseño es **totalmente responsivo**: todo se dimensiona de forma proporcional
-a la pantalla, así que se adapta a cualquier resolución (1920×1080, 1366×768,
-4K, ultrawide, móvil, etc.) sin píxeles fijos.
+Se entrega como **un único archivo `index.html` autocontenido** (HTML + CSS +
+JavaScript, sin dependencias): basta con descargarlo y abrirlo en Chrome en PC,
+tablet o smartphone. Todos los datos permanecen **localmente en el dispositivo**.
 
-## Cómo usarla
+## Flujo de uso
 
-1. Abre `index.html` en el navegador (doble clic, o sírvela con un servidor
-   estático). Para el ejercicio, ponlo en **pantalla completa** (F11 en PC).
-2. Configura la sesión y pulsa **Comenzar sesión**.
-3. Fija la mirada en la figura central. Aparecerá un estímulo cada vez.
-4. **Márcalo** donde lo percibas:
-   - **PC / ratón:** mueve el cursor (se dibuja como un aro) y haz **clic**.
-   - **Táctil:** **toca** la pantalla con el dedo en esa posición.
-   Aparecerá tu gomet y pasarás automáticamente al siguiente estímulo.
-   Tras tu marca, la X y tu gomet permanecen visibles un **tiempo configurable**
-   (para ver el resultado y **retirar la mano**) y luego desaparecen para dar
-   paso a la siguiente: las marcas **no se acumulan**, así siempre distingues
-   la nueva.
-5. Si **no percibes** el estímulo, espera unos segundos: aparecerá una **franja
-   “No la veo”** alrededor de todo el borde de la pantalla. Actívala con
-   **doble clic / doble toque** en cualquier punto de ella para saltar.
-6. Al terminar verás el **dashboard de la sesión** (puntuación automática). Puedes
-   **corregir** cualquier juicio tocando su marca, y pulsar **Guardar resultados**.
-7. Consulta tu **Historial y evolución**; selecciona cualquier fecha para abrir
-   de nuevo el **dashboard completo de esa prueba** y comparar tu progreso. Puedes
-   **borrar una sesión concreta** (🗑) o todo el historial.
+1. Al abrir, aparece el **selector de perfiles**: crea un perfil (nombre y
+   apellidos) o selecciona uno existente. Sin perfil activo no se puede entrar
+   a ningún ejercicio.
+2. Tras seleccionar perfil se accede al **menú de bloques**, con una vista
+   general (sesiones por bloque, última actividad, tiempo total de uso).
+3. Elige **Bloque 1** o **Bloque 2**, configura y realiza la sesión.
+4. Consulta el **dashboard y el historial de cada bloque** (siempre separados
+   por bloque y por perfil), exporta o importa copias de seguridad.
 
-Atajo durante el ejercicio: `Esc` sale.
+## Bloque 1 — Estímulos y gomets
 
-## Funcionalidades
+El ejercicio original completo, sin cambios de comportamiento: fijación
+central (cruz/punto), estímulos periféricos uno a uno sin solaparse, marcado
+digital por clic/toque, cuenta atrás, aparición aleatoria anti-anticipación,
+franja perimetral «No la veo», puntuación automática con tolerancia ajustable
+y corrección manual, hemicampos, mapas de fallos (sesión/acumulado), gráfico
+de evolución, CSV, pantalla completa, Wake Lock, sonido y vibración.
 
-- **Distancia de uso recomendada**
-  - Según el tamaño de pantalla detectado (ajustable), recomienda la distancia
-    óptima ojo–pantalla: la mínima prudente que no fatiga la vista y a la vez
-    abarca el mayor campo visual posible. Muestra el campo visual estimado (°).
-- **Configuración por sesión**
-  - Número de estímulos (1–60).
-  - Forma del estímulo: **equis (✕)** o **círculo de control**, con tamaño regulable.
-  - Figura central de fijación: **cruz** o **punto**, con tamaño regulable.
-  - **Colores independientes** (espectro completo) para: figura central,
-    estímulo, gomet (tu marca) y cursor.
-  - **Modo de interacción**: automático (detecta el dispositivo), PC o táctil.
-  - **Exigencia de precisión** ajustable: define cuánto margen entre tu marca y
-    el estímulo cuenta como acierto.
-  - **Tiempo de visualización** tras marcar (cuánto siguen visibles la X y el
-    gomet antes de pasar al siguiente).
-  - Tiempo tras el cual aparece la franja **“No la veo”**.
-- **Ejercicio**
-  - **Cuenta atrás 3-2-1** antes del primer estímulo, para fijar la mirada.
-  - **Aparición aleatoria** del estímulo (retardo configurable): evita
-    respuestas rítmicas por anticipación; los toques durante la espera se
-    ignoran.
-  - **Pantalla siempre encendida** durante la prueba (Wake Lock) y **aviso al
-    salir** de la página con un ejercicio en curso.
-  - **Vibración de feedback** en móviles compatibles (activable).
-  - Se ejecuta a **pantalla completa** y el lienzo se ajusta al área realmente
-    visible, de modo que ningún estímulo queda fuera de pantalla.
-  - **Orientación**: en móvil/tablet, si configuras en vertical, al empezar te
-    pide **girar a horizontal**; los estímulos se generan y puntúan en la
-    orientación real de uso, y la orientación se **fija** durante la prueba para
-    que un giro no altere los resultados.
-  - Estímulos uno a uno, en posiciones aleatorias **sin solaparse** entre sí ni
-    invadir la zona central, y siempre dentro del área útil (no bajo la franja).
-  - **Sin acumulación**: tras marcar, la X y el gomet se muestran un tiempo
-    configurable y luego desaparecen, de modo que la nueva marca siempre se
-    distingue y te da tiempo a retirar la mano sin taparla.
-  - En PC, el **cursor** se dibuja como un aro semitransparente del tamaño del
-    gomet; el gomet colocado es un círculo relleno y opaco.
-  - Franja **“No la veo”** alrededor de todo el borde de la pantalla, con el
-    mensaje en los cuatro lados (para que, sea cual sea la zona afectada del
-    usuario, siempre quede accesible y visible), con activación por **doble
-    clic / doble toque** para evitar pulsaciones por error.
-  - Fondo claro y suave para no fatigar la vista.
-  - **Señal acústica** de feedback inmediato (acierto / fallo) vía Web Audio API.
-- **Puntuación automática**
-  - La app compara tu marca con la posición real del estímulo y decide
-    acierto/fallo según la tolerancia configurada.
-  - Métricas por sesión: precisión, aciertos, no vistos, **error medio**
-    (en radios del estímulo), **tiempo medio** de respuesta, **sesgo
-    direccional** del error, **duración** y **precisión por hemicampos**
-    (izquierdo/derecho y superior/inferior, resaltando en rojo el lado más
-    débil — clave para ver la zona afectada del campo visual).
-  - Puedes corregir manualmente cualquier juicio en el dashboard.
-- **Registro y evolución**
-  - Cada sesión se guarda localmente (`localStorage`).
-  - Gráfico de evolución de la precisión y estadísticas globales.
-  - **Mapa de calor de fallos** por zonas, **seleccionable** entre *acumulado*
-    (todas las sesiones) y la *sesión* concreta. En el resultado de cada sesión
-    puedes ver su propio mapa o el acumulado.
-  - **Histórico de dashboards**: cada fecha es seleccionable y reabre el
-    dashboard completo de esa prueba concreta, mostrando además un **gráfico de
-    evolución del tiempo medio de respuesta** (desde la primera sesión hasta la
-    seleccionada) y **dos mapas de fallos**: el de esa sesión y el **acumulado
-    hasta esa sesión**.
-  - **Borrado selectivo**: elimina una sesión concreta (🗑) o todo el historial.
-  - **Exportar** el historial a **JSON** (copia de seguridad) o a **CSV**
-    (una fila por estímulo, listo para Excel/Calc en español).
-  - **Importar** un JSON exportado: fusiona sin duplicar (para restaurar una
-    copia o mover los datos a otro dispositivo).
-  - Los gráficos numeran las sesiones en el eje X.
-  - **La configuración se recuerda** entre usos (número de estímulos, colores,
-    tiempos, etc.).
-- **Refuerzo adaptativo** (opcional): las próximas sesiones aumentan la
-  frecuencia de estímulos en las zonas donde más se falla.
-- **Supervisión por cámara** (opcional): vista previa de webcam durante el
-  ejercicio. *El análisis automático por IA queda planteado como mejora futura.*
+## Bloque 2 — Letras
 
-## Estructura
+Punto de fijación **circular** central (alto contraste, tamaño configurable,
+con zona de exclusión) y letras del alfabeto español (Ñ opcional) distribuidas
+sin solaparse, con **tamaño progresivo según la distancia al centro**
+(`tamaño = mín + factorRadial^intensidad × (máx − mín)`, todo configurable).
 
-| Archivo | Descripción |
-|---|---|
-| `index.html` | **Archivo único autocontenido**: pantallas, estilos y lógica (CSS y JS incrustados). Es lo único que necesitas para usar la app. |
+- **Modalidad A — Localizar letra**: la app pronuncia una letra (voz española
+  de `speechSynthesis`, con velocidad/volumen ajustables y alternativa escrita
+  si no hay voz); el usuario la localiza y selecciona. Se registran aciertos,
+  errores previos, omisiones, tiempos, posiciones normalizadas y repeticiones
+  de audio. Botón «Repetir» y «No la encuentro».
+- **Modalidad B — Formar palabra**: pronuncia una palabra corta (banco en
+  español, longitud configurable, Ñ conservada, tildes normalizadas) y el
+  usuario selecciona sus letras en orden; las letras repetidas se pulsan
+  varias veces. Reiniciar palabra, repetir audio, saltar (queda registrada
+  como incompleta), pausa y reanudación.
+- Controles de sesión: repetir, pausar/reanudar, saltar, finalizar (con
+  confirmación; la sesión queda «completada» o «interrumpida» conservando los
+  intentos). Pantalla completa, Wake Lock, sonido/vibración, cuenta atrás.
+- **Dashboard del Bloque 2** (misma estructura visual que el Bloque 1):
+  precisión, aciertos, errores, omisiones/incompletas, tiempos (por objetivo,
+  por palabra, por letra, hasta la primera selección), hemicampos izq/der y
+  sup/inf, duración, repeticiones de audio; **estadísticas por letra** con
+  confusiones más frecuentes; **mapa de errores por sesión y acumulado**
+  (coordenadas normalizadas) y **gráfico de evolución del tiempo medio**
+  filtrado por modalidad — solo con sesiones del Bloque 2.
+
+## Perfiles y datos
+
+- Perfiles locales con id único, fecha de creación, última sesión y contador
+  de sesiones; editar y eliminar (con doble confirmación e indicación de que
+  se borran sus sesiones).
+- **Separación estricta**: cada sesión lleva `profileId` y `blockId`
+  (`block1`/`block2`; modalidades `letter-search`/`word-sequence`). Ningún
+  gráfico, mapa o promedio mezcla bloques ni usuarios.
+- **Persistencia**: localStorage con esquema versionado
+  (`rvp_profiles_v1`, `rvp_sessions_v1`, `rvp_configs_v1`); guardado
+  automático, control de errores de almacenamiento y configuraciones
+  recordadas **por perfil y por bloque**.
+- **Migración automática**: las sesiones de versiones anteriores se conservan
+  y se ofrecen para asignarlas a un perfil al seleccionarlo; la clave antigua
+  se mantiene como copia de seguridad.
+- **Exportar**: perfil completo (JSON versionado), CSV por bloque, sesión
+  individual (JSON) desde su detalle. **Importar**: JSON de perfil (con
+  resumen previo, combinación sin duplicados o perfil nuevo) y formato antiguo.
+
+## Estructura interna (un solo archivo)
+
+StorageManager (localStorage versionado) · ProfileManager · Navigation/showScreen
+con guardia de perfil · Block1Controller (código original intacto; su acceso a
+datos es una vista filtrada por perfil+bloque) · Block2Controller (layout radial,
+modalidades, registro) · SpeechManager · componentes compartidos: tarjetas,
+`fillHeatmap`, `wireHeatToggle`, `drawTimeChart`, `fitCanvas`, tonos, vibración,
+Wake Lock, pantalla completa, cuenta atrás · Export/ImportManager.
 
 ## Privacidad
 
-Todos los datos (resultados de sesiones) se guardan **solo en tu navegador**
-mediante `localStorage`. No se envía nada a ningún servidor. La cámara, si la
-activas, se usa únicamente para la vista previa local.
+Los datos se almacenan localmente en este dispositivo; no se envía nada a
+servidores. Realiza copias de seguridad periódicas mediante la función Exportar.
 
-## Hoja de ruta
+## Limitaciones conocidas
 
-- Análisis automático por IA (visión por cámara) para validar la postura y la
-  fijación de la mirada y sincronizarlo con la aparición de los estímulos.
-- Modos de retroalimentación visual adicionales.
-- Exportación de informes en PDF.
+- Persistencia en localStorage (no IndexedDB): decisión deliberada por
+  robustez en un solo archivo y volumen de datos pequeño; el esquema está
+  versionado y las copias JSON cubren el respaldo.
+- Exportación XLSX y PDF no incluidas (JSON + CSV disponibles).
+- La voz depende de las voces instaladas en el dispositivo; sin ellas, la
+  instrucción se muestra por escrito.
+- Sectores de análisis: hemicampos y cuadrantes (no anillos radiales).

@@ -68,16 +68,103 @@ html, body {
 .screen { display: none; min-height: 100vh; }
 .screen.active { display: block; }
 
-#screen-config, #screen-result, #screen-history, #screen-detail {
+#screen-config, #screen-result, #screen-history, #screen-detail,
+#screen-profiles, #screen-menu, #screen-b2-config, #screen-b2-result,
+#screen-b2-history, #screen-b2-detail {
   display: none;
   padding: clamp(16px, 4vw, 48px);
 }
 #screen-config.active, #screen-result.active,
-#screen-history.active, #screen-detail.active {
+#screen-history.active, #screen-detail.active,
+#screen-profiles.active, #screen-menu.active, #screen-b2-config.active,
+#screen-b2-result.active, #screen-b2-history.active, #screen-b2-detail.active {
   display: flex;
   justify-content: center;
   align-items: flex-start;
 }
+
+/* ---------- Barra superior con el usuario activo ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 8px clamp(12px, 3vw, 28px);
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+.topbar-actions { display: flex; gap: 8px; }
+.topbar-actions .ghost { padding: 7px 12px; font-size: 0.85rem; }
+
+/* ---------- Selector de perfiles ---------- */
+.profile-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.profile-card {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+  background: #fff; cursor: pointer; transition: background 0.12s;
+}
+.profile-card:hover { background: #f6f9f7; border-color: var(--accent); }
+.profile-card .p-name { font-weight: 700; font-size: 1.05rem; }
+.profile-card .p-meta { font-size: 0.78rem; color: var(--ink-soft); }
+.profile-card .p-actions { display: flex; gap: 6px; }
+.profile-card .p-actions button {
+  border: 1px solid var(--border); background: #fff; border-radius: 8px;
+  padding: 6px 10px; font-size: 0.9rem;
+}
+input[type="text"] {
+  padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 1rem; color: var(--ink); background: #fff; width: 100%;
+}
+.legacy-notice {
+  background: #fff7e0; border: 1px solid #e8d9a0; border-radius: 10px;
+  padding: 12px 14px; font-size: 0.9rem; margin-bottom: 14px;
+}
+
+/* ---------- Menú de bloques ---------- */
+.block-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.block-card {
+  border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+  background: #faf9f5;
+}
+.block-card h2 { margin: 0 0 6px; }
+.block-card h2 small { display: block; font-size: 0.6em; color: var(--accent); font-weight: 600; }
+.block-card p { color: var(--ink-soft); font-size: 0.9rem; line-height: 1.45; }
+
+/* ---------- Bloque 2: ejercicio ---------- */
+.b2-stage { cursor: default; }
+.b2-fixation {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  border-radius: 50%; background: #111; z-index: 2; pointer-events: none;
+  box-shadow: 0 0 0 0.5vmin rgba(255,255,255,0.85), 0 0 0 0.8vmin rgba(0,0,0,0.55);
+}
+.b2-letter {
+  position: absolute; transform: translate(-50%, -50%);
+  font-weight: 800; color: #1c1c1c; line-height: 1;
+  user-select: none; -webkit-user-select: none; cursor: pointer;
+  padding: 0.2em; border-radius: 0.25em; z-index: 1;
+  font-family: "Segoe UI", Verdana, system-ui, sans-serif;
+}
+.b2-letter.flash-ok { color: var(--ok); text-decoration: underline; }
+.b2-letter.flash-fail { color: var(--fail); }
+.b2-written {
+  position: absolute; left: 50%; top: 7%; transform: translateX(-50%);
+  font-size: clamp(1.2rem, 4vmin, 2.2rem); font-weight: 800; color: var(--accent);
+  background: rgba(255,255,255,0.85); border-radius: 10px; padding: 4px 16px;
+  z-index: 4; pointer-events: none; letter-spacing: 2px;
+}
+.b2-controls {
+  position: fixed; top: 0; right: 0; z-index: 6;
+  display: flex; gap: 6px; padding: 8px;
+}
+.b2-controls .ghost { padding: 8px 12px; font-size: 0.85rem; opacity: 0.85; }
+.b2-hud { z-index: 5; }
+
+/* ---------- Estadísticas por letra ---------- */
+.letter-stats { overflow-x: auto; }
+.letter-stats table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.letter-stats th, .letter-stats td {
+  border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: center;
+}
+.letter-stats th { color: var(--accent); font-weight: 700; }
+.letter-stats td.l { font-weight: 800; font-size: 1.05rem; }
 
 /* ---------- Paneles de UI ---------- */
 .panel {
@@ -429,10 +516,78 @@ button.link {
     ⚠ Este visor no está ejecutando JavaScript. Abre el archivo <b>index.html</b> con <b>Google Chrome</b> (Menú ⋮ → “Abrir con” → Chrome).
   </div>
 
-  <!-- ===================== PANTALLA: CONFIGURACIÓN ===================== -->
-  <section id="screen-config" class="screen active">
+  <!-- ===================== BARRA SUPERIOR (usuario activo) ===================== -->
+  <header id="topbar" class="topbar hidden">
+    <span class="topbar-user">👤 <b id="topbar-name">—</b></span>
+    <span class="topbar-actions">
+      <button type="button" id="topbar-menu" class="ghost">Menú</button>
+      <button type="button" id="topbar-switch" class="ghost">Cambiar de usuario</button>
+    </span>
+  </header>
+
+  <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
+  <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v3.0</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v4.0</span></h1>
+      <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
+        Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
+      <div id="legacy-notice" class="legacy-notice hidden"></div>
+      <div id="profile-list" class="profile-list"></div>
+      <fieldset>
+        <legend>Crear perfil nuevo</legend>
+        <form id="profile-form">
+          <label class="field"><span>Nombre</span>
+            <input type="text" id="pf-first" required maxlength="40" autocomplete="off" /></label>
+          <label class="field"><span>Apellido(s)</span>
+            <input type="text" id="pf-last" required maxlength="60" autocomplete="off" /></label>
+          <button type="submit" class="primary">Crear perfil</button>
+        </form>
+      </fieldset>
+      <p class="hint-text" style="text-align:center">Los datos se almacenan localmente en este
+        dispositivo. Realiza copias de seguridad periódicas mediante la función Exportar.</p>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: MENÚ DE BLOQUES ===================== -->
+  <section id="screen-menu" class="screen">
+    <div class="panel wide">
+      <h1>Menú de ejercicios</h1>
+      <p class="subtitle" id="menu-greeting"></p>
+      <div id="menu-overview" class="history-summary"></div>
+      <div class="block-cards">
+        <div class="block-card">
+          <h2>Bloque 1 <small>Estímulos y gomets</small></h2>
+          <p>Fija la mirada en la figura central y marca los estímulos periféricos
+             (X o puntos) con clic o toque.</p>
+          <div class="review-actions">
+            <button type="button" id="menu-b1-start" class="primary">Configurar y comenzar</button>
+            <button type="button" id="menu-b1-history" class="ghost">Historial</button>
+          </div>
+        </div>
+        <div class="block-card">
+          <h2>Bloque 2 <small>Letras</small></h2>
+          <p>Mantén la mirada en el punto central y localiza letras por la pantalla:
+             búsqueda de letras o formación de palabras, con instrucción por voz.</p>
+          <div class="review-actions">
+            <button type="button" id="menu-b2-start" class="primary">Configurar y comenzar</button>
+            <button type="button" id="menu-b2-history" class="ghost">Historial</button>
+          </div>
+        </div>
+      </div>
+      <div class="review-actions" style="margin-top:18px">
+        <button type="button" id="menu-export" class="ghost">Exportar perfil (JSON)</button>
+        <button type="button" id="menu-import" class="ghost">Importar copia</button>
+        <button type="button" id="menu-switch" class="ghost">Cambiar de usuario</button>
+      </div>
+      <p class="hint-text" style="text-align:center;margin-top:14px">Los datos se almacenan
+        localmente en este dispositivo. Estos ejercicios no constituyen un diagnóstico clínico.</p>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: CONFIGURACIÓN (BLOQUE 1) ===================== -->
+  <section id="screen-config" class="screen">
+    <div class="panel">
+      <h1>Bloque 1 <span class="ver">Estímulos y gomets</span></h1>
       <p class="subtitle">
         Fija la mirada en la figura central. Cuando percibas un estímulo en la
         periferia, márcalo: en PC con un <strong>clic</strong> y en pantallas
@@ -573,6 +728,7 @@ button.link {
       </form>
 
       <button type="button" id="btn-history" class="link">Ver historial y evolución</button>
+      <button type="button" id="btn-b1-menu" class="link">Volver al menú</button>
     </div>
   </section>
 
@@ -679,7 +835,200 @@ button.link {
         </div>
       </div>
       <div class="review-actions">
+        <button type="button" id="btn-detail-export" class="ghost">Exportar sesión (JSON)</button>
         <button type="button" id="btn-detail-back" class="primary">Volver al historial</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BLOQUE 2: CONFIGURACIÓN ===================== -->
+  <section id="screen-b2-config" class="screen">
+    <div class="panel">
+      <h1>Bloque 2 <span class="ver">Letras</span></h1>
+      <p class="subtitle">Mantén la mirada en el punto central. Localiza y selecciona las
+        letras utilizando la visión periférica y los movimientos de exploración indicados
+        por tu profesional.</p>
+
+      <form id="b2-config-form">
+        <fieldset>
+          <legend>Modalidad y nivel</legend>
+          <label class="field"><span>Modalidad</span>
+            <select id="b2-mode">
+              <option value="letter-search">Localizar letra (instrucción por voz)</option>
+              <option value="word-sequence">Formar palabra (letra a letra)</option>
+            </select></label>
+          <label class="field"><span>Nivel predefinido</span>
+            <select id="b2-preset">
+              <option value="custom">Personalizado</option>
+              <option value="easy">Inicial</option>
+              <option value="mid" selected>Intermedio</option>
+              <option value="hard">Avanzado</option>
+            </select></label>
+          <label class="field"><span id="b2-count-label">Número de objetivos: <output id="b2-out-count">10</output></span>
+            <input type="range" id="b2-count" min="1" max="27" value="10" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Letras</legend>
+          <label class="field"><span>Letras visibles en pantalla: <output id="b2-out-visible">18</output></span>
+            <input type="range" id="b2-visible" min="6" max="27" value="18" /></label>
+          <label class="field"><span>Mayúsculas / minúsculas</span>
+            <select id="b2-case">
+              <option value="upper">Mayúsculas</option>
+              <option value="lower">Minúsculas</option>
+              <option value="mixed">Mezcladas</option>
+            </select></label>
+          <label class="field-inline"><input type="checkbox" id="b2-enye" checked />
+            <span>Incluir la letra Ñ</span></label>
+          <label class="field-inline"><input type="checkbox" id="b2-reshuffle" />
+            <span>Reorganizar las letras tras cada intento</span></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Tamaños (progresión radial)</legend>
+          <label class="field"><span>Tamaño mínimo (centro): <output id="b2-out-min">2.5</output>%</span>
+            <input type="range" id="b2-min-size" min="1.5" max="6" step="0.1" value="2.5" /></label>
+          <label class="field"><span>Tamaño máximo (periferia): <output id="b2-out-max">7.0</output>%</span>
+            <input type="range" id="b2-max-size" min="3" max="14" step="0.5" value="7" /></label>
+          <label class="field"><span>Intensidad de la progresión: <output id="b2-out-exp">1.0</output></span>
+            <input type="range" id="b2-exp" min="0.5" max="2" step="0.1" value="1" />
+            <small class="hint-text">&lt;1 crecen antes; &gt;1 crecen sobre todo en la periferia.</small></label>
+          <label class="field"><span>Tamaño del punto central: <output id="b2-out-center">2.5</output>%</span>
+            <input type="range" id="b2-center-size" min="1" max="6" step="0.5" value="2.5" /></label>
+          <label class="field"><span>Zona de exclusión central: <output id="b2-out-excl">14</output>%</span>
+            <input type="range" id="b2-excl" min="8" max="30" value="14" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Voz e instrucciones</legend>
+          <label class="field"><span>Velocidad de la voz: <output id="b2-out-rate">0.9</output></span>
+            <input type="range" id="b2-rate" min="0.5" max="1.5" step="0.1" value="0.9" /></label>
+          <label class="field"><span>Volumen: <output id="b2-out-vol">1.0</output></span>
+            <input type="range" id="b2-vol" min="0.2" max="1" step="0.1" value="1" /></label>
+          <label class="field-inline"><input type="checkbox" id="b2-written" />
+            <span>Mostrar también la letra/palabra escrita</span></label>
+          <button type="button" id="b2-test-voice" class="ghost">🔊 Probar voz</button>
+          <div id="b2-voice-warn" class="hint-text"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Palabras (modalidad Formar palabra)</legend>
+          <label class="field"><span>Longitud de palabra: <output id="b2-out-wlen">3–5</output> letras</span>
+            <input type="range" id="b2-wmin" min="3" max="6" value="3" />
+            <input type="range" id="b2-wmax" min="3" max="7" value="5" /></label>
+          <label class="field"><span>Pausa entre palabras/objetivos: <output id="b2-out-pause">1.2</output> s</span>
+            <input type="range" id="b2-pause" min="0.3" max="4" step="0.1" value="1.2" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Opciones</legend>
+          <label class="field-inline"><input type="checkbox" id="b2-sound" checked />
+            <span>Señal acústica de feedback</span></label>
+          <label class="field-inline"><input type="checkbox" id="b2-vibrate" checked />
+            <span>Vibración de feedback (móviles compatibles)</span></label>
+        </fieldset>
+
+        <button type="submit" class="primary">Comenzar sesión</button>
+      </form>
+      <button type="button" id="b2-btn-history" class="link">Ver historial y evolución</button>
+      <button type="button" id="b2-btn-menu" class="link">Volver al menú</button>
+    </div>
+  </section>
+
+  <!-- ===================== BLOQUE 2: EJERCICIO ===================== -->
+  <section id="screen-b2-exercise" class="screen">
+    <div id="b2-stage" class="stage b2-stage">
+      <div id="b2-countdown" class="countdown hidden"></div>
+      <div id="b2-fixation" class="b2-fixation"></div>
+      <div id="b2-written-target" class="b2-written hidden"></div>
+    </div>
+    <div id="b2-controls" class="b2-controls">
+      <button type="button" id="b2-repeat" class="ghost">🔊 Repetir</button>
+      <button type="button" id="b2-word-restart" class="ghost hidden">↺ Reiniciar palabra</button>
+      <button type="button" id="b2-skip" class="ghost">⏭ No la encuentro</button>
+      <button type="button" id="b2-pause" class="ghost">⏸ Pausa</button>
+      <button type="button" id="b2-finish" class="ghost danger">✕ Finalizar</button>
+    </div>
+    <div class="hud b2-hud">
+      <span id="b2-progress">0 / 0</span>
+      <span class="hud-hint" id="b2-hint">Mantén la mirada en el punto central</span>
+    </div>
+    <div id="b2-pause-overlay" class="rotate-gate hidden">
+      <div class="rotate-card">
+        <div class="rotate-ico">⏸</div>
+        <h2>Sesión en pausa</h2>
+        <p>Los tiempos están detenidos. Reanuda cuando estés preparado.</p>
+        <div class="rotate-actions">
+          <button type="button" id="b2-resume" class="primary">▶ Reanudar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BLOQUE 2: RESULTADO ===================== -->
+  <section id="screen-b2-result" class="screen">
+    <div class="panel wide">
+      <h2>Resultado de la sesión — Bloque 2</h2>
+      <p class="subtitle" id="b2-result-subtitle"></p>
+      <div id="b2-result-dashboard"></div>
+      <h3>Mapa de errores</h3>
+      <div class="heat-toggle" id="b2-result-heat-toggle">
+        <button type="button" class="seg" data-mode="one">Esta sesión</button>
+        <button type="button" class="seg" data-mode="acc">Acumulado</button>
+      </div>
+      <div id="b2-result-heatmap" class="error-heatmap"></div>
+      <div class="review-actions">
+        <button type="button" id="b2-btn-discard" class="ghost danger">Descartar</button>
+        <button type="button" id="b2-btn-save" class="primary">Guardar resultados</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BLOQUE 2: HISTORIAL ===================== -->
+  <section id="screen-b2-history" class="screen">
+    <div class="panel wide">
+      <h2>Historial y evolución — Bloque 2</h2>
+      <div class="heat-toggle" id="b2-hist-mode">
+        <button type="button" class="seg active" data-mode="letter-search">Localizar letra</button>
+        <button type="button" class="seg" data-mode="word-sequence">Formar palabra</button>
+      </div>
+      <div id="b2-history-summary" class="history-summary"></div>
+      <h3>Evolución del tiempo medio de respuesta</h3>
+      <div class="chart-wrap"><canvas id="b2-evolution-chart" width="800" height="240"></canvas></div>
+      <h3>Mapa de errores</h3>
+      <div class="heat-toggle" id="b2-hist-heat-toggle">
+        <button type="button" class="seg" data-mode="acc">Acumulado (todas)</button>
+        <button type="button" class="seg" data-mode="last">Última sesión</button>
+      </div>
+      <div id="b2-error-heatmap" class="error-heatmap"></div>
+      <h3>Estadísticas por letra</h3>
+      <div id="b2-letter-stats" class="letter-stats"></div>
+      <h3>Sesiones (selecciona una para ver su dashboard)</h3>
+      <div id="b2-history-list" class="history-list"></div>
+      <div class="review-actions">
+        <button type="button" id="b2-export-csv" class="ghost">Exportar CSV</button>
+        <button type="button" id="b2-btn-back-config" class="primary">Volver al Bloque 2</button>
+        <button type="button" id="b2-btn-back-menu" class="ghost">Menú</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BLOQUE 2: DETALLE DE SESIÓN ===================== -->
+  <section id="screen-b2-detail" class="screen">
+    <div class="panel wide">
+      <h2 id="b2-detail-title">Dashboard de la sesión — Bloque 2</h2>
+      <p class="subtitle" id="b2-detail-subtitle"></p>
+      <div id="b2-detail-dashboard"></div>
+      <h3>Mapa de errores</h3>
+      <div class="heatmap-pair">
+        <div><div class="heatmap-cap">Esta sesión</div>
+          <div id="b2-detail-heat-one" class="error-heatmap"></div></div>
+        <div><div class="heatmap-cap">Acumulado hasta esta sesión</div>
+          <div id="b2-detail-heat-acc" class="error-heatmap"></div></div>
+      </div>
+      <div class="review-actions">
+        <button type="button" id="b2-detail-export" class="ghost">Exportar sesión (JSON)</button>
+        <button type="button" id="b2-detail-back" class="primary">Volver al historial</button>
       </div>
     </div>
   </section>
@@ -705,9 +1054,15 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "3.0";
-  const STORAGE_KEY = "rehab_visual_sessions_v2";
-  const CONFIG_KEY = "rehab_visual_config_v1";
+  const APP_VERSION = "4.0";
+  const SCHEMA_VERSION = 3;
+  const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
+  const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
+  const P_KEY = "rvp_profiles_v1";                  // perfiles
+  const S_KEY = "rvp_sessions_v1";                  // TODAS las sesiones (profileId + blockId)
+  const CFG_KEY2 = "rvp_configs_v1";                // configs por perfil y bloque
+  const ACTIVE_KEY = "rvp_active_profile";          // último perfil activo
+  const MIG_KEY = "rvp_migration_done_v1";          // migración de datos antiguos hecha
   const GRID = 4;          // rejilla para mapa de fallos y refuerzo adaptativo
   const DBLTAP_MS = 450;   // ventana para doble clic / doble toque
 
@@ -726,23 +1081,107 @@ button.link {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function showScreen(id) {
+    // Guardia: sin perfil activo solo se puede estar en el selector de perfiles.
+    if (id !== "#screen-profiles" && !activeProfileId) id = "#screen-profiles";
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $(id).classList.add("active");
+    // Barra superior: visible salvo en el selector y durante los ejercicios.
+    const bar = $("#topbar");
+    if (bar) {
+      const hide = id === "#screen-profiles" || id === "#screen-exercise" || id === "#screen-b2-exercise";
+      bar.classList.toggle("hidden", hide);
+      const p = activeProfile();
+      $("#topbar-name").textContent = p ? (p.firstName + " " + p.lastName) : "—";
+    }
     // Redibuja los gráficos cuando su pantalla ya es visible (para medir bien su
     // ancho real; dibujarlos ocultos daría ancho 0).
     if (typeof onChartsResize === "function") onChartsResize();
   }
 
-  function loadSessions() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch (e) { return []; }
+  // =====================================================================
+  //  Almacenamiento (StorageManager): perfiles + sesiones globales
+  //  Cada sesión lleva profileId y blockId; nada se mezcla entre perfiles
+  //  ni entre bloques. loadSessions/saveSessions se mantienen como VISTA
+  //  filtrada del Bloque 1 para no tocar su lógica ya validada.
+  // =====================================================================
+  let activeProfileId = null;
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+    catch (e) { return fallback; }
   }
-  function saveSessions(list) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+  function saveJSON(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
     catch (e) {
       alert("No se pudo guardar en el almacenamiento del navegador (¿espacio lleno o modo privado?). " +
             "Exporta tus datos a JSON como copia de seguridad.");
+      return false;
     }
+  }
+
+  function allProfiles() { return loadJSON(P_KEY, []); }
+  function saveProfiles(list) { saveJSON(P_KEY, list); }
+  function getProfile(id) { return allProfiles().find((p) => p.id === id) || null; }
+  function activeProfile() { return getProfile(activeProfileId); }
+
+  function allStoredSessions() { return loadJSON(S_KEY, []); }
+  function saveAllSessions(list) { saveJSON(S_KEY, list); }
+
+  // Sesiones de un bloque del perfil activo (ordenadas cronológicamente).
+  function sessionsOf(blockId) {
+    return allStoredSessions()
+      .filter((s) => (s.blockId || "block1") === blockId && s.profileId === activeProfileId)
+      .sort((a, b) => a.id - b.id);
+  }
+  // Sustituye el subconjunto (bloque+perfil activo) por `list`, conservando el resto.
+  function replaceSessionsOf(blockId, list) {
+    const rest = allStoredSessions()
+      .filter((s) => !((s.blockId || "block1") === blockId && s.profileId === activeProfileId));
+    list.forEach((s) => { s.blockId = blockId; s.profileId = activeProfileId; });
+    saveAllSessions(rest.concat(list));
+    touchProfile();
+  }
+
+  // ---- Vista del BLOQUE 1 (costura con el código existente; no cambiar) ----
+  function loadSessions() { return sessionsOf("block1"); }
+  function saveSessions(list) { replaceSessionsOf("block1", list); }
+
+  function touchProfile() {
+    const list = allProfiles();
+    const p = list.find((x) => x.id === activeProfileId);
+    if (p) { p.lastActiveAt = Date.now(); saveProfiles(list); }
+  }
+
+  // ---- Migración automática de los datos de la versión anterior ----
+  // Las sesiones antiguas pasan al almacén global SIN perfil (profileId=null);
+  // al seleccionar un perfil se ofrece asignarlas. La clave antigua se conserva
+  // como copia de seguridad.
+  function migrateLegacy() {
+    try {
+      if (localStorage.getItem(MIG_KEY)) return;
+      const old = loadJSON(STORAGE_KEY, []);
+      if (old.length) {
+        const cur = allStoredSessions();
+        const ids = {};
+        cur.forEach((s) => { ids[s.id] = true; });
+        old.forEach((s) => {
+          if (!ids[s.id]) {
+            s.blockId = "block1"; s.profileId = null;
+            cur.push(s); ids[s.id] = true;
+          }
+        });
+        saveAllSessions(cur);
+      }
+      localStorage.setItem(MIG_KEY, "1");
+    } catch (e) { /* la migración nunca debe bloquear el arranque */ }
+  }
+  function unassignedLegacySessions() {
+    return allStoredSessions().filter((s) => s.profileId === null || s.profileId === undefined);
+  }
+  function assignLegacyTo(profileId) {
+    const cur = allStoredSessions();
+    cur.forEach((s) => { if (s.profileId === null || s.profileId === undefined) s.profileId = profileId; });
+    saveAllSessions(cur);
   }
 
   function cellIndex(xPct, yPct) {
@@ -770,8 +1209,16 @@ button.link {
     } catch (e) { /* audio no disponible */ }
   }
 
+  // Config de feedback del bloque activo (Bloque 1 = session, Bloque 2 = b2).
+  function feedbackCfg() {
+    if (session && session.config) return session.config;
+    if (typeof b2 !== "undefined" && b2 && b2.config) return b2.config;
+    return null;
+  }
+
   function tone(freq, durationMs, type = "sine", gainPeak = 0.18) {
-    if (!session || !session.config.sound) return;
+    const fc = feedbackCfg();
+    if (!fc || !fc.sound) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended" && audioCtx.resume) audioCtx.resume();
@@ -792,7 +1239,8 @@ button.link {
   // Vibración de feedback (solo si el dispositivo la soporta y está activada).
   function vibrate(pattern) {
     try {
-      if (session && session.config.vibrate && navigator.vibrate) navigator.vibrate(pattern);
+      const fc = feedbackCfg();
+      if (fc && fc.vibrate && navigator.vibrate) navigator.vibrate(pattern);
     } catch (e) { /* sin vibración */ }
   }
 
@@ -1060,9 +1508,9 @@ button.link {
 
   // Cuenta atrás 3-2-1 con la figura central visible, para que el usuario
   // fije la mirada antes del primer estímulo.
-  function runCountdown(done) {
+  function runCountdown(done, elSel) {
     locked = true;
-    const el = $("#countdown");
+    const el = $(elSel || "#countdown");
     let n = 3;
     el.textContent = n;
     el.classList.remove("hidden");
@@ -1539,11 +1987,13 @@ button.link {
     }, "acc");
   }
 
+  let detailRecId = null;
   function openSessionDetail(id) {
     const list = loadSessions();
     const idx = list.findIndex((s) => s.id === id);
     if (idx < 0) return;
     const rec = list[idx];
+    detailRecId = id;
     const d = new Date(rec.date);
     $("#detail-title").textContent = "Dashboard · " + d.toLocaleDateString() + " " +
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -1654,6 +2104,7 @@ button.link {
   function onChartsResize() {
     if ($("#screen-history").classList.contains("active")) drawChart(lastAccVals);
     if ($("#screen-detail").classList.contains("active")) drawTimeChart($("#detail-time-chart"), lastTimeSecs);
+    if ($("#screen-b2-history").classList.contains("active")) drawTimeChart($("#b2-evolution-chart"), b2LastSecs);
   }
 
   // Pinta el mapa de fallos (rejilla GRID×GRID) en el elemento dado, a partir
@@ -1718,14 +2169,28 @@ button.link {
     };
   }
 
-  // ---- Persistencia de la configuración: recuerda los ajustes entre usos ----
-  function persistConfig(cfg) {
-    try { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } catch (e) { /* nada */ }
+  // ---- Persistencia de la configuración POR PERFIL Y BLOQUE ----
+  function saveBlockConfig(blockKey, cfg) {
+    const all = loadJSON(CFG_KEY2, {});
+    if (!all[activeProfileId]) all[activeProfileId] = {};
+    all[activeProfileId][blockKey] = cfg;
+    saveJSON(CFG_KEY2, all);
+  }
+  function getBlockConfig(blockKey) {
+    const all = loadJSON(CFG_KEY2, {});
+    const p = all[activeProfileId];
+    if (p && p[blockKey]) return p[blockKey];
+    // Fallback de migración: la config global de la versión anterior (Bloque 1).
+    if (blockKey === "block1") {
+      try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch (e) { /* nada */ }
+    }
+    return null;
   }
 
+  function persistConfig(cfg) { saveBlockConfig("block1", cfg); }
+
   function restoreConfig() {
-    let c = null;
-    try { c = JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch (e) { return; }
+    const c = getBlockConfig("block1");
     if (!c) return;
     const set = (sel, v) => {
       if (v === undefined || v === null) return;
@@ -1803,6 +2268,870 @@ button.link {
   }
 
   // =====================================================================
+  //  ProfileManager: selector, creación, edición y borrado de perfiles
+  // =====================================================================
+  function uid() { return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8); }
+  const fmtDate = (t) => t ? new Date(t).toLocaleDateString() : "—";
+
+  function lastSessionTime(profileId) {
+    let last = null;
+    allStoredSessions().forEach((s) => {
+      if (s.profileId === profileId && s.id && (!last || s.id > last)) last = s.id;
+    });
+    return last;
+  }
+  function sessionCount(profileId) {
+    return allStoredSessions().filter((s) => s.profileId === profileId).length;
+  }
+
+  function renderProfiles() {
+    const list = allProfiles();
+    const wrap = $("#profile-list");
+    const lastActive = localStorage.getItem(ACTIVE_KEY);
+    wrap.innerHTML = list.length ? "" : '<p class="empty">Aún no hay perfiles. Crea el primero.</p>';
+    list.forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "profile-card";
+      const star = p.id === lastActive ? " ⭐" : "";
+      card.innerHTML =
+        '<span><span class="p-name">' + escapeHtml(p.firstName + " " + p.lastName) + star + "</span><br>" +
+        '<span class="p-meta">Creado: ' + fmtDate(p.createdAt) +
+        " · Última sesión: " + fmtDate(lastSessionTime(p.id)) +
+        " · Sesiones: " + sessionCount(p.id) + "</span></span>" +
+        '<span class="p-actions">' +
+        '<button type="button" class="p-edit" title="Editar">✏</button>' +
+        '<button type="button" class="p-del" title="Eliminar">🗑</button></span>';
+      card.addEventListener("click", (e) => {
+        if (e.target.closest(".p-edit")) { editProfile(p.id); return; }
+        if (e.target.closest(".p-del")) { deleteProfile(p.id); return; }
+        selectProfile(p.id);
+      });
+      wrap.appendChild(card);
+    });
+    // Aviso de datos de la versión anterior pendientes de asignar.
+    const un = unassignedLegacySessions();
+    const notice = $("#legacy-notice");
+    if (un.length) {
+      notice.textContent = "Hay " + un.length + " sesión(es) de la versión anterior sin asignar a " +
+        "ningún perfil. Al seleccionar un perfil se te ofrecerá asignárselas.";
+      notice.classList.remove("hidden");
+    } else {
+      notice.classList.add("hidden");
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function createProfile(first, last) {
+    const p = {
+      id: uid(), firstName: first.trim(), lastName: last.trim(),
+      createdAt: Date.now(), updatedAt: Date.now(), lastActiveAt: null, preferences: {},
+    };
+    const list = allProfiles(); list.push(p); saveProfiles(list);
+    selectProfile(p.id);
+  }
+
+  function editProfile(id) {
+    const list = allProfiles();
+    const p = list.find((x) => x.id === id);
+    if (!p) return;
+    const first = prompt("Nombre:", p.firstName);
+    if (first === null) return;
+    const last = prompt("Apellido(s):", p.lastName);
+    if (last === null) return;
+    if (first.trim()) p.firstName = first.trim();
+    if (last.trim()) p.lastName = last.trim();
+    p.updatedAt = Date.now();
+    saveProfiles(list);
+    renderProfiles();
+  }
+
+  function deleteProfile(id) {
+    const p = getProfile(id);
+    if (!p) return;
+    const n = sessionCount(id);
+    if (!confirm("Vas a eliminar el perfil de " + p.firstName + " " + p.lastName +
+      ".\n\nTAMBIÉN se eliminarán sus " + n + " sesión(es) y todos sus resultados.\n\n¿Continuar?")) return;
+    if (!confirm("Esta acción no se puede deshacer. ¿Eliminar definitivamente?")) return;
+    saveProfiles(allProfiles().filter((x) => x.id !== id));
+    saveAllSessions(allStoredSessions().filter((s) => s.profileId !== id));
+    const cfgs = loadJSON(CFG_KEY2, {}); delete cfgs[id]; saveJSON(CFG_KEY2, cfgs);
+    if (activeProfileId === id) { activeProfileId = null; localStorage.removeItem(ACTIVE_KEY); }
+    renderProfiles();
+  }
+
+  function selectProfile(id) {
+    const p = getProfile(id);
+    if (!p) return;
+    activeProfileId = id;
+    try { localStorage.setItem(ACTIVE_KEY, id); } catch (e) { /* nada */ }
+    touchProfile();
+    const un = unassignedLegacySessions();
+    if (un.length && confirm("Se han encontrado " + un.length + " sesión(es) de la versión anterior " +
+      "de la aplicación.\n\n¿Asignarlas al perfil de " + p.firstName + " " + p.lastName + "?\n\n" +
+      "(Si respondes «Cancelar», se volverá a preguntar más adelante.)")) {
+      assignLegacyTo(id);
+    }
+    openMenu();
+  }
+
+  function switchUser() {
+    activeProfileId = null;
+    renderProfiles();
+    showScreen("#screen-profiles");
+  }
+
+  // =====================================================================
+  //  Menú de bloques y vista general del perfil
+  // =====================================================================
+  function openMenu() {
+    const p = activeProfile();
+    $("#menu-greeting").textContent = "Perfil activo: " + p.firstName + " " + p.lastName +
+      ". Elige un ejercicio o gestiona los datos.";
+    const b1 = sessionsOf("block1"), b2s = sessionsOf("block2");
+    const totalMs = b1.concat(b2s).reduce((a, s) => a + (s.duration || 0), 0);
+    const lastT = lastSessionTime(activeProfileId);
+    $("#menu-overview").innerHTML =
+      '<div class="stat-card"><div class="num">' + b1.length + '</div><div class="lbl">Sesiones Bloque 1</div></div>' +
+      '<div class="stat-card"><div class="num">' + b2s.length + '</div><div class="lbl">Sesiones Bloque 2</div></div>' +
+      '<div class="stat-card"><div class="num">' + fmtDate(lastT) + '</div><div class="lbl">Última actividad</div></div>' +
+      '<div class="stat-card"><div class="num">' + fmtDur(totalMs) + '</div><div class="lbl">Tiempo total de uso</div></div>';
+    showScreen("#screen-menu");
+  }
+
+  function openBlock1() { restoreConfig(); showScreen("#screen-config"); }
+
+  // =====================================================================
+  //  SpeechManager: síntesis de voz en español con alternativa escrita
+  // =====================================================================
+  function speechAvailable() {
+    return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+  }
+  function esVoice() {
+    try {
+      const vs = speechSynthesis.getVoices() || [];
+      let v = vs.find((x) => x.lang && x.lang.toLowerCase().indexOf("es") === 0 && x.localService);
+      if (!v) v = vs.find((x) => x.lang && x.lang.toLowerCase().indexOf("es") === 0);
+      return v || null;
+    } catch (e) { return null; }
+  }
+  function speak(text) {
+    if (!speechAvailable()) return false;
+    try {
+      speechSynthesis.cancel();     // evitar locuciones solapadas
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "es-ES";
+      const v = esVoice(); if (v) u.voice = v;
+      const cfg = (b2 && b2.config) ? b2.config : null;
+      u.rate = cfg ? cfg.rate : 0.9;
+      u.volume = cfg ? cfg.volume : 1;
+      speechSynthesis.speak(u);
+      return true;
+    } catch (e) { return false; }
+  }
+  const LETTER_NAMES = {
+    A: "a", B: "be", C: "ce", D: "de", E: "e", F: "efe", G: "ge", H: "hache", I: "i",
+    J: "jota", K: "ka", L: "ele", M: "eme", N: "ene", "Ñ": "eñe", O: "o", P: "pe",
+    Q: "cu", R: "erre", S: "ese", T: "te", U: "u", V: "uve", W: "uve doble",
+    X: "equis", Y: "i griega", Z: "zeta",
+  };
+  function speakLetter(ch) { return speak("Letra " + (LETTER_NAMES[ch.toUpperCase()] || ch)); }
+  function speakWord(w) { return speak(w.toLowerCase()); }
+
+  // =====================================================================
+  //  Block2Controller: ejercicio de letras
+  // =====================================================================
+  const ALPHABET = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+  // Banco de palabras cortas y comunes (sin tildes; la Ñ se conserva).
+  const WORD_BANK = [
+    "SOL", "PAN", "MAR", "SAL", "PIE", "LUZ", "RIO", "OSO", "UVA", "ALA",
+    "CASA", "MESA", "LUNA", "GATO", "MANO", "AGUA", "FLOR", "ROSA", "PATO", "BOCA",
+    "TREN", "NUBE", "PERA", "SOPA", "VASO", "CAMA", "PELO", "NIÑO", "AÑO", "PIÑA",
+    "LIBRO", "SILLA", "VERDE", "PAPEL", "CIELO", "LECHE", "SEÑAL", "PLATO", "CALLE", "FUEGO",
+    "CAMINO", "BOTELLA", "VENTANA",
+  ];
+
+  function shuffleArr(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  // Normalización de vocales acentuadas (la Ñ se conserva).
+  function normLetter(ch) {
+    const map = { "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U", "Ü": "U" };
+    const up = ch.toUpperCase();
+    return map[up] || up;
+  }
+
+  let b2 = null;              // sesión del Bloque 2 en curso
+  let pendingB2 = null;       // registro pendiente de guardar
+  let b2Timer = null;         // temporizador de pausa-entre-objetivos
+  let b2HistMode = "letter-search";
+  let b2LastSecs = [];        // memoria del gráfico b2 para redibujar
+
+  function b2ClearTimer() { if (b2Timer) { clearTimeout(b2Timer); b2Timer = null; } }
+
+  function b2ReadConfig() {
+    return {
+      mode: $("#b2-mode").value,
+      count: parseInt($("#b2-count").value, 10),
+      visible: parseInt($("#b2-visible").value, 10),
+      letterCase: $("#b2-case").value,
+      enye: $("#b2-enye").checked,
+      reshuffle: $("#b2-reshuffle").checked,
+      minSize: parseFloat($("#b2-min-size").value),
+      maxSize: parseFloat($("#b2-max-size").value),
+      exp: parseFloat($("#b2-exp").value),
+      centerSize: parseFloat($("#b2-center-size").value),
+      excl: parseFloat($("#b2-excl").value),
+      rate: parseFloat($("#b2-rate").value),
+      volume: parseFloat($("#b2-vol").value),
+      written: $("#b2-written").checked,
+      wmin: parseInt($("#b2-wmin").value, 10),
+      wmax: parseInt($("#b2-wmax").value, 10),
+      pause: parseFloat($("#b2-pause").value),
+      sound: $("#b2-sound").checked,
+      vibrate: $("#b2-vibrate").checked,
+    };
+  }
+  function b2ApplyConfig(c) {
+    if (!c) return;
+    const set = (sel, v) => {
+      if (v === undefined || v === null) return;
+      const el = $(sel); if (!el) return;
+      if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    set("#b2-mode", c.mode); set("#b2-count", c.count); set("#b2-visible", c.visible);
+    set("#b2-case", c.letterCase); set("#b2-enye", c.enye); set("#b2-reshuffle", c.reshuffle);
+    set("#b2-min-size", c.minSize); set("#b2-max-size", c.maxSize); set("#b2-exp", c.exp);
+    set("#b2-center-size", c.centerSize); set("#b2-excl", c.excl);
+    set("#b2-rate", c.rate); set("#b2-vol", c.volume); set("#b2-written", c.written);
+    set("#b2-wmin", c.wmin); set("#b2-wmax", c.wmax); set("#b2-pause", c.pause);
+    set("#b2-sound", c.sound); set("#b2-vibrate", c.vibrate);
+  }
+  const B2_PRESETS = {
+    easy: { visible: 10, count: 6, minSize: 3.5, maxSize: 9, exp: 1, excl: 16, rate: 0.8, pause: 2, reshuffle: false },
+    mid: { visible: 18, count: 10, minSize: 2.5, maxSize: 7, exp: 1, excl: 14, rate: 0.9, pause: 1.2, reshuffle: false },
+    hard: { visible: 27, count: 15, minSize: 2, maxSize: 5.5, exp: 1.2, excl: 12, rate: 1, pause: 0.8, reshuffle: true },
+  };
+
+  function openBlock2Config() {
+    b2ApplyConfig(getBlockConfig("block2"));
+    const warn = $("#b2-voice-warn");
+    warn.textContent = speechAvailable()
+      ? "" : "⚠ Este navegador no dispone de síntesis de voz: la letra/palabra se mostrará por escrito.";
+    showScreen("#screen-b2-config");
+  }
+
+  // ---- Construcción del conjunto de letras visibles ----
+  function b2BuildLetterSet(cfg, needed) {
+    const base = ALPHABET.filter((l) => l !== "Ñ" || cfg.enye);
+    const chosen = {};
+    (needed || []).forEach((l) => { chosen[l] = true; });
+    const out = Object.keys(chosen);
+    const pool = shuffleArr(base.filter((l) => !chosen[l]));
+    while (out.length < Math.min(cfg.visible, base.length) && pool.length) out.push(pool.pop());
+    return shuffleArr(out);
+  }
+  function b2DisplayChar(letter, cfg) {
+    if (cfg.letterCase === "lower") return letter.toLowerCase();
+    if (cfg.letterCase === "mixed") return Math.random() < 0.5 ? letter.toLowerCase() : letter;
+    return letter;
+  }
+
+  // ---- Distribución espacial con tamaño radial progresivo ----
+  // tamaño = mín + factorRadial^exp × (máx − mín), con factorRadial ∈ [0,1].
+  function b2Layout() {
+    const stage = $("#b2-stage");
+    stage.querySelectorAll(".b2-letter").forEach((e) => e.remove());
+    const W = window.innerWidth, H = window.innerHeight;
+    const vmin = Math.min(W, H);
+    const cfg = b2.config;
+    const cx = W / 2, cy = H / 2;
+    const exclPx = (cfg.excl / 100) * vmin;
+    const margin = 0.045 * vmin;
+    const rMax = Math.hypot(W / 2 - margin, H / 2 - margin);
+    const placed = [];
+
+    b2.layout = {};
+    b2.letterSet.forEach((letter) => {
+      let ok = null;
+      for (let tries = 0; tries < 600 && !ok; tries++) {
+        const x = margin + Math.random() * (W - 2 * margin);
+        const y = margin + Math.random() * (H - 2 * margin);
+        // Evitar la zona de controles (esquina superior derecha).
+        if (y < 64 && x > W - 420) continue;
+        const r = Math.hypot(x - cx, y - cy);
+        const f = clamp((r - exclPx) / Math.max(1, rMax - exclPx), 0, 1);
+        const sizePct = cfg.minSize + Math.pow(f, cfg.exp) * (cfg.maxSize - cfg.minSize);
+        const fpx = (sizePct / 100) * vmin;
+        if (r < exclPx + fpx / 2) continue;                    // zona de exclusión central
+        if (x - fpx / 2 < 6 || x + fpx / 2 > W - 6) continue;  // sin recortes laterales
+        if (y - fpx / 2 < 6 || y + fpx / 2 > H - 6) continue;
+        const factor = tries < 300 ? 0.68 : 0.52;              // relajar si cuesta colocar
+        const collide = placed.some((p) => Math.hypot(p.x - x, p.y - y) < (p.fpx + fpx) * factor);
+        if (collide) continue;
+        ok = { x, y, fpx, sizePct };
+      }
+      if (!ok) {  // último recurso: colocar en anillo libre aproximado
+        const ang = Math.random() * Math.PI * 2;
+        const rr = exclPx + Math.random() * (rMax - exclPx - margin);
+        ok = { x: clamp(cx + Math.cos(ang) * rr, margin, W - margin),
+               y: clamp(cy + Math.sin(ang) * rr, margin, H - margin),
+               fpx: (cfg.minSize / 100) * vmin, sizePct: cfg.minSize };
+      }
+      placed.push(ok);
+      const el = document.createElement("div");
+      el.className = "b2-letter";
+      el.dataset.letter = letter;
+      el.textContent = b2DisplayChar(letter, cfg);
+      el.style.left = (ok.x / W * 100) + "%";
+      el.style.top = (ok.y / H * 100) + "%";
+      el.style.fontSize = ok.sizePct + "vmin";
+      stage.appendChild(el);
+      b2.layout[letter] = { x: ok.x / W * 100, y: ok.y / H * 100, size: ok.sizePct };
+    });
+  }
+
+  // ---- Sesión ----
+  function b2Start(cfg) {
+    saveBlockConfig("block2", cfg);
+    let targets = [], needed = [];
+    if (cfg.mode === "word-sequence") {
+      let words = WORD_BANK.filter((w) => w.length >= cfg.wmin && w.length <= cfg.wmax);
+      if (!cfg.enye) words = words.filter((w) => w.indexOf("Ñ") < 0);
+      if (!words.length) words = WORD_BANK.filter((w) => cfg.enye || w.indexOf("Ñ") < 0);
+      words = shuffleArr(words.slice());
+      while (words.length < cfg.count) words = words.concat(shuffleArr(words.slice()));
+      targets = words.slice(0, cfg.count);
+      const lset = {};
+      targets.forEach((w) => { w.split("").forEach((ch) => { lset[normLetter(ch)] = true; }); });
+      needed = Object.keys(lset);
+    }
+    b2 = {
+      config: cfg, startedAt: Date.now(), attempts: [], state: "countdown",
+      pausedMs: 0, pauseStart: 0, ti: 0, targets: [], cur: null,
+      letterSet: b2BuildLetterSet(cfg, needed), layout: {},
+    };
+    if (cfg.mode === "letter-search") {
+      let seq = [];
+      while (seq.length < cfg.count) seq = seq.concat(shuffleArr(b2.letterSet.slice()));
+      b2.targets = seq.slice(0, cfg.count);
+    } else {
+      b2.targets = targets;
+    }
+
+    // Punto central de fijación (círculo, alto contraste, no seleccionable).
+    const fix = $("#b2-fixation");
+    fix.style.width = cfg.centerSize + "vmin";
+    fix.style.height = cfg.centerSize + "vmin";
+
+    $("#b2-word-restart").classList.toggle("hidden", cfg.mode !== "word-sequence");
+    $("#b2-skip").textContent = cfg.mode === "word-sequence" ? "⏭ Saltar palabra" : "⏭ No la encuentro";
+    $("#b2-written-target").classList.add("hidden");
+    $("#b2-hint").textContent = "Mantén la mirada en el punto central";
+
+    showScreen("#screen-b2-exercise");
+    requestFs();
+    lockCurrentOrientation();
+    b2Fit();
+    window.addEventListener("resize", b2Fit);
+    acquireWakeLock();
+    document.addEventListener("visibilitychange", onVisWake);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("keydown", onB2Key);
+    $("#b2-stage").addEventListener("pointerdown", onB2Tap);
+
+    b2Layout();
+    runCountdown(function () {
+      b2.state = "running";
+      b2NextTarget();
+    }, "#b2-countdown");
+  }
+
+  function b2Fit() {
+    const st = $("#b2-stage");
+    st.style.width = window.innerWidth + "px";
+    st.style.height = window.innerHeight + "px";
+  }
+  function b2Now() { return performance.now() - b2.pausedMs; }
+
+  function b2Announce(repeat) {
+    const cfg = b2.config;
+    const isWord = cfg.mode === "word-sequence";
+    const text = isWord ? b2.cur.word : b2.cur.target;
+    const spoken = isWord ? speakWord(text) : speakLetter(text);
+    const wr = $("#b2-written-target");
+    if (cfg.written || !spoken) {
+      wr.textContent = isWord ? text : b2DisplayChar(text, cfg);
+      wr.classList.remove("hidden");
+    } else {
+      wr.classList.add("hidden");
+    }
+    if (repeat && b2.cur) b2.cur.audioRepeats++;
+  }
+
+  function b2NextTarget() {
+    b2ClearTimer();
+    if (!b2) return;
+    if (b2.ti >= b2.targets.length) { b2End("completada"); return; }
+    if (b2.config.reshuffle && b2.ti > 0) b2Layout();
+    const t = b2.targets[b2.ti];
+    if (b2.config.mode === "letter-search") {
+      b2.cur = { target: t, errors: [], t0: b2Now(), audioRepeats: 0 };
+    } else {
+      b2.cur = { word: t, pos: 0, errors: [], times: [], lastT: b2Now(), t0: b2Now(),
+                 firstRt: null, audioRepeats: 0, restarted: 0 };
+    }
+    b2.state = "running";
+    $("#b2-progress").textContent = (b2.ti + 1) + " / " + b2.targets.length;
+    b2Announce(false);
+  }
+
+  function b2FlashLetter(letter, ok) {
+    const el = $("#b2-stage").querySelector('.b2-letter[data-letter="' + letter + '"]');
+    if (!el) return;
+    const cls = ok ? "flash-ok" : "flash-fail";
+    el.classList.add(cls);
+    setTimeout(function () { el.classList.remove(cls); }, 450);
+  }
+
+  function onB2Tap(e) {
+    if (!b2 || b2.state !== "running") return;
+    const el = e.target.closest(".b2-letter");
+    if (!el) return;
+    e.preventDefault();
+    const letter = el.dataset.letter;
+    const pos = b2.layout[letter] || { x: 50, y: 50 };
+    if (b2.config.mode === "letter-search") b2TapLetter(letter, pos);
+    else b2TapWord(letter, pos);
+  }
+
+  function b2TapLetter(letter, pos) {
+    const cur = b2.cur;
+    if (letter === cur.target) {
+      const tpos = b2.layout[cur.target] || { x: 50, y: 50 };
+      b2.attempts.push({
+        target: cur.target, correct: true, omitted: false,
+        errorsBefore: cur.errors.length, errors: cur.errors,
+        rt: Math.round(b2Now() - cur.t0),
+        tx: tpos.x, ty: tpos.y, audioRepeats: cur.audioRepeats,
+        timestamp: Date.now(),
+      });
+      b2FlashLetter(letter, true); sndOk(); vibrate(35);
+      b2.ti++; b2.state = "wait";
+      b2Timer = setTimeout(b2NextTarget, b2.config.pause * 1000);
+    } else {
+      cur.errors.push({ letter: letter, x: pos.x, y: pos.y });
+      b2FlashLetter(letter, false); sndFail(); vibrate([0, 90, 60, 90]);
+    }
+  }
+
+  function b2TapWord(letter, pos) {
+    const cur = b2.cur;
+    const expected = normLetter(cur.word.charAt(cur.pos));
+    const now = b2Now();
+    if (letter === expected) {
+      if (cur.firstRt === null) cur.firstRt = Math.round(now - cur.t0);
+      cur.times.push(Math.round(now - cur.lastT));
+      cur.lastT = now;
+      cur.pos++;
+      b2FlashLetter(letter, true); sndOk(); vibrate(35);
+      $("#b2-hint").textContent = "Palabra: " + cur.pos + " de " + cur.word.length + " letras";
+      if (cur.pos >= cur.word.length) {
+        b2.attempts.push({
+          word: cur.word, completed: true, skipped: false,
+          errors: cur.errors, errorCount: cur.errors.length,
+          firstRt: cur.firstRt, totalMs: Math.round(now - cur.t0),
+          times: cur.times, letters: cur.word.length,
+          audioRepeats: cur.audioRepeats, restarted: cur.restarted,
+          timestamp: Date.now(),
+        });
+        b2.ti++; b2.state = "wait";
+        $("#b2-hint").textContent = "Mantén la mirada en el punto central";
+        b2Timer = setTimeout(b2NextTarget, b2.config.pause * 1000);
+      }
+    } else {
+      cur.errors.push({ letter: letter, x: pos.x, y: pos.y, atPos: cur.pos });
+      b2FlashLetter(letter, false); sndFail(); vibrate([0, 90, 60, 90]);
+    }
+  }
+
+  // Omisión / palabra saltada.
+  function b2Skip() {
+    if (!b2 || b2.state !== "running") return;
+    const cur = b2.cur;
+    if (b2.config.mode === "letter-search") {
+      const tpos = b2.layout[cur.target] || { x: 50, y: 50 };
+      b2.attempts.push({
+        target: cur.target, correct: false, omitted: true,
+        errorsBefore: cur.errors.length, errors: cur.errors,
+        rt: Math.round(b2Now() - cur.t0), tx: tpos.x, ty: tpos.y,
+        audioRepeats: cur.audioRepeats, timestamp: Date.now(),
+      });
+    } else {
+      b2.attempts.push({
+        word: cur.word, completed: false, skipped: true,
+        errors: cur.errors, errorCount: cur.errors.length,
+        firstRt: cur.firstRt, totalMs: Math.round(b2Now() - cur.t0),
+        times: cur.times, letters: cur.word.length, lettersDone: cur.pos,
+        audioRepeats: cur.audioRepeats, restarted: cur.restarted, timestamp: Date.now(),
+      });
+    }
+    sndFail(); vibrate([0, 90, 60, 90]);
+    b2.ti++;
+    b2NextTarget();
+  }
+
+  function b2WordRestart() {
+    if (!b2 || b2.state !== "running" || b2.config.mode !== "word-sequence") return;
+    b2.cur.pos = 0; b2.cur.restarted++;
+    $("#b2-hint").textContent = "Palabra reiniciada";
+    b2Announce(true);
+  }
+
+  function b2Pause() {
+    if (!b2 || b2.state !== "running") return;
+    b2.state = "paused"; b2.pauseStart = performance.now();
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* nada */ }
+    $("#b2-pause-overlay").classList.remove("hidden");
+  }
+  function b2Resume() {
+    if (!b2 || b2.state !== "paused") return;
+    b2.pausedMs += performance.now() - b2.pauseStart;
+    b2.state = "running";
+    $("#b2-pause-overlay").classList.add("hidden");
+    b2Announce(true);
+  }
+
+  function onB2Key(e) {
+    if (e.code === "Escape") { e.preventDefault(); b2Finish(); }
+  }
+  function b2Finish() {
+    if (!b2) return;
+    const done = b2.ti >= b2.targets.length;
+    if (!done && !confirm("¿Finalizar la sesión? Se conservarán los intentos ya realizados.")) return;
+    b2End(done ? "completada" : "interrumpida");
+  }
+
+  function b2Cleanup() {
+    b2ClearTimer(); clearCdTimer();
+    $("#b2-countdown").classList.add("hidden");
+    $("#b2-pause-overlay").classList.add("hidden");
+    $("#b2-stage").removeEventListener("pointerdown", onB2Tap);
+    document.removeEventListener("keydown", onB2Key);
+    window.removeEventListener("resize", b2Fit);
+    document.removeEventListener("visibilitychange", onVisWake);
+    window.removeEventListener("beforeunload", onBeforeUnload);
+    releaseWakeLock(); unlockOrientation(); exitFs();
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* nada */ }
+    $("#b2-stage").querySelectorAll(".b2-letter").forEach((el) => el.remove());
+  }
+
+  function b2End(status) {
+    b2Cleanup();
+    pendingB2 = {
+      id: b2.startedAt, date: new Date(b2.startedAt).toISOString(),
+      blockId: "block2", modeId: b2.config.mode, profileId: activeProfileId,
+      status: status, startedAt: b2.startedAt, endedAt: Date.now(),
+      duration: Date.now() - b2.startedAt, appVersion: APP_VERSION,
+      settings: b2.config, attempts: b2.attempts,
+    };
+    b2 = null;
+    b2RenderResult();
+    showScreen("#screen-b2-result");
+  }
+
+  // =====================================================================
+  //  Bloque 2: agregados, dashboards, historial y mapas
+  // =====================================================================
+  function b2Aggregate(rec) {
+    const at = rec.attempts || [];
+    const isWord = rec.modeId === "word-sequence";
+    const acc = { total: at.length };
+    const hemi = { l: [], r: [], t: [], b: [] };
+    if (!isWord) {
+      const found = at.filter((a) => a.correct);
+      const firstTry = at.filter((a) => a.correct && a.errorsBefore === 0);
+      acc.hits = firstTry.length;
+      acc.found = found.length;
+      acc.errors = at.reduce((s, a) => s + (a.errorsBefore || 0), 0);
+      acc.omissions = at.filter((a) => a.omitted).length;
+      acc.accuracy = at.length ? firstTry.length / at.length : 0;
+      acc.meanRt = found.length ? Math.round(found.reduce((s, a) => s + a.rt, 0) / found.length) : null;
+      acc.audioRepeats = at.reduce((s, a) => s + (a.audioRepeats || 0), 0);
+      at.forEach((a) => {
+        const hit = a.correct && a.errorsBefore === 0;
+        if (a.tx != null) {
+          (a.tx < 50 ? hemi.l : hemi.r).push(hit);
+          (a.ty < 50 ? hemi.t : hemi.b).push(hit);
+        }
+      });
+    } else {
+      const comp = at.filter((a) => a.completed);
+      acc.hits = comp.length;
+      acc.errors = at.reduce((s, a) => s + (a.errorCount || 0), 0);
+      acc.omissions = at.filter((a) => a.skipped).length;
+      const okPresses = at.reduce((s, a) => s + (a.completed ? a.letters : (a.lettersDone || 0)), 0);
+      acc.accuracy = (okPresses + acc.errors) ? okPresses / (okPresses + acc.errors) : 0;
+      acc.meanRt = comp.length ? Math.round(comp.reduce((s, a) => s + a.totalMs, 0) / comp.length) : null;
+      const allTimes = [];
+      at.forEach((a) => { (a.times || []).forEach((t) => allTimes.push(t)); });
+      acc.meanLetter = allTimes.length ? Math.round(allTimes.reduce((s, t) => s + t, 0) / allTimes.length) : null;
+      const firsts = at.filter((a) => a.firstRt != null);
+      acc.meanFirst = firsts.length ? Math.round(firsts.reduce((s, a) => s + a.firstRt, 0) / firsts.length) : null;
+      acc.audioRepeats = at.reduce((s, a) => s + (a.audioRepeats || 0), 0);
+      at.forEach((a) => (a.errors || []).forEach((e) => {
+        (e.x < 50 ? hemi.l : hemi.r).push(false);
+        (e.y < 50 ? hemi.t : hemi.b).push(false);
+      }));
+    }
+    const hAcc = (arr) => arr.length ? arr.filter(Boolean).length / arr.length : null;
+    acc.hemiL = hAcc(hemi.l); acc.hemiR = hAcc(hemi.r);
+    acc.hemiT = hAcc(hemi.t); acc.hemiB = hAcc(hemi.b);
+    return acc;
+  }
+
+  // Puntos {x,y,hit} para reutilizar fillHeatmap con datos del Bloque 2.
+  function b2HeatPoints(rec) {
+    const pts = [];
+    (rec.attempts || []).forEach((a) => {
+      if (rec.modeId === "letter-search") {
+        if (a.tx != null) pts.push({ x: a.tx, y: a.ty, hit: a.correct && a.errorsBefore === 0 });
+      }
+      (a.errors || []).forEach((e) => pts.push({ x: e.x, y: e.y, hit: false }));
+    });
+    return pts;
+  }
+  function b2HeatAdapter(recs) { return recs.map((r) => ({ stimuli: b2HeatPoints(r) })); }
+
+  const MODE_LABEL = { "letter-search": "Localizar letra", "word-sequence": "Formar palabra" };
+
+  function b2RenderDashboard(el, rec) {
+    const a = b2Aggregate(rec);
+    const isWord = rec.modeId === "word-sequence";
+    const hemiPair = (v1, v2) => {
+      const f = (v, other) => {
+        if (v == null) return "—";
+        const weak = other != null && v < other - 0.1;
+        return weak ? '<span style="color:var(--fail)">' + pct(v) + "</span>" : pct(v);
+      };
+      return f(v1, v2) + " / " + f(v2, v1);
+    };
+    let cards =
+      '<div class="dash-stats">' +
+      '<div class="stat-card"><div class="num">' + pct(a.accuracy) + '</div><div class="lbl">' + (isWord ? "Precisión de letras" : "Precisión (1.ᵉʳ intento)") + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + a.hits + "/" + a.total + '</div><div class="lbl">' + (isWord ? "Palabras completadas" : "Aciertos a la primera") + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + a.errors + '</div><div class="lbl">Errores</div></div>' +
+      '<div class="stat-card"><div class="num">' + a.omissions + '</div><div class="lbl">' + (isWord ? "Incompletas" : "Omisiones") + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + (a.meanRt != null ? (a.meanRt / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + (isWord ? "Tiempo medio/palabra" : "Tiempo medio") + "</div></div>";
+    if (isWord) {
+      cards +=
+        '<div class="stat-card"><div class="num">' + (a.meanLetter != null ? (a.meanLetter / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Tiempo medio/letra</div></div>' +
+        '<div class="stat-card"><div class="num">' + (a.meanFirst != null ? (a.meanFirst / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Hasta 1.ª selección</div></div>';
+    }
+    cards +=
+      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiL, a.hemiR) + '</div><div class="lbl">Campo izq / der</div></div>' +
+      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiT, a.hemiB) + '</div><div class="lbl">Campo sup / inf</div></div>' +
+      '<div class="stat-card"><div class="num">' + (rec.duration ? fmtDur(rec.duration) : "—") + '</div><div class="lbl">Duración</div></div>' +
+      '<div class="stat-card"><div class="num">' + (a.audioRepeats || 0) + '</div><div class="lbl">Repeticiones de audio</div></div>' +
+      "</div>";
+    el.innerHTML = cards + b2LetterTable([rec]);
+  }
+
+  // Estadísticas por letra (y confusiones) a partir de una lista de sesiones.
+  function b2LetterTable(recs) {
+    const st = {};
+    const ensure = (l) => (st[l] || (st[l] = { asked: 0, ok: 0, err: 0, rts: [], conf: {} }));
+    recs.forEach((rec) => (rec.attempts || []).forEach((a) => {
+      if (rec.modeId === "letter-search") {
+        const s = ensure(a.target);
+        s.asked++;
+        if (a.correct && a.errorsBefore === 0) s.ok++;
+        if (a.rt != null && a.correct) s.rts.push(a.rt);
+        (a.errors || []).forEach((e) => { s.err++; s.conf[e.letter] = (s.conf[e.letter] || 0) + 1; });
+      } else {
+        (a.word || "").split("").forEach((ch) => { ensure(normLetter(ch)).asked++; });
+        (a.errors || []).forEach((e) => {
+          const target = normLetter((a.word || "").charAt(e.atPos || 0) || "?");
+          const s = ensure(target);
+          s.err++; s.conf[e.letter] = (s.conf[e.letter] || 0) + 1;
+        });
+      }
+    }));
+    const rows = Object.keys(st).map((l) => {
+      const s = st[l];
+      const confs = Object.keys(s.conf).sort((a, b) => s.conf[b] - s.conf[a]).slice(0, 2).join(", ") || "—";
+      const rt = s.rts.length ? (s.rts.reduce((x, y) => x + y, 0) / s.rts.length / 1000).toFixed(1) + "s" : "—";
+      return { l: l, asked: s.asked, ok: s.ok, err: s.err, rt: rt, confs: confs };
+    }).filter((r) => r.asked || r.err);
+    if (!rows.length) return "";
+    rows.sort((a, b) => b.err - a.err || b.asked - a.asked);
+    let html = '<div class="letter-stats"><table><tr><th>Letra</th><th>Pedida</th><th>Aciertos</th>' +
+      "<th>Errores</th><th>T. medio</th><th>Confundida con</th></tr>";
+    rows.slice(0, 12).forEach((r) => {
+      html += '<tr><td class="l">' + r.l + "</td><td>" + r.asked + "</td><td>" + r.ok +
+        "</td><td>" + (r.err ? '<span style="color:var(--fail)">' + r.err + "</span>" : "0") +
+        "</td><td>" + r.rt + "</td><td>" + r.confs + "</td></tr>";
+    });
+    return html + "</table></div>";
+  }
+
+  function b2RenderResult() {
+    const rec = pendingB2;
+    $("#b2-result-subtitle").textContent = MODE_LABEL[rec.modeId] + " · estado: " + rec.status + ".";
+    b2RenderDashboard($("#b2-result-dashboard"), rec);
+    wireHeatToggle($("#b2-result-heat-toggle"), $("#b2-result-heatmap"), {
+      one: () => b2HeatAdapter([rec]),
+      acc: () => b2HeatAdapter(sessionsOf("block2").concat([rec])),
+    }, "one");
+  }
+
+  function b2SaveSession() {
+    if (!pendingB2) return;
+    replaceSessionsOf("block2", sessionsOf("block2").concat([pendingB2]));
+    pendingB2 = null;
+    b2RenderHistory();
+    showScreen("#screen-b2-history");
+  }
+
+  function b2SessionSecs(s) {
+    const a = b2Aggregate(s);
+    return a.meanRt != null ? a.meanRt / 1000 : 0;
+  }
+
+  function b2RenderHistory() {
+    const all = sessionsOf("block2");
+    const list = all.filter((s) => s.modeId === b2HistMode);
+    // Botones de modalidad.
+    $("#b2-hist-mode").querySelectorAll(".seg").forEach((b) => {
+      b.classList.toggle("active", b.dataset.mode === b2HistMode);
+    });
+    const summary = $("#b2-history-summary");
+    const listEl = $("#b2-history-list");
+    if (!list.length) {
+      summary.innerHTML = '<p class="empty">Aún no hay sesiones de esta modalidad.</p>';
+      listEl.innerHTML = "";
+      b2LastSecs = [];
+      drawTimeChart($("#b2-evolution-chart"), []);
+      fillHeatmap($("#b2-error-heatmap"), []);
+      $("#b2-letter-stats").innerHTML = "";
+      return;
+    }
+    const aggs = list.map((s) => b2Aggregate(s));
+    const avgAcc = aggs.reduce((a, g) => a + g.accuracy, 0) / list.length;
+    const compl = list.filter((s) => s.status === "completada").length;
+    const withRt = aggs.filter((g) => g.meanRt != null);
+    const best = withRt.length ? Math.min.apply(null, withRt.map((g) => g.meanRt)) : null;
+    summary.innerHTML =
+      '<div class="stat-card"><div class="num">' + list.length + '</div><div class="lbl">Sesiones</div></div>' +
+      '<div class="stat-card"><div class="num">' + compl + '</div><div class="lbl">Completadas</div></div>' +
+      '<div class="stat-card"><div class="num">' + (list.length - compl) + '</div><div class="lbl">Interrumpidas</div></div>' +
+      '<div class="stat-card"><div class="num">' + pct(avgAcc) + '</div><div class="lbl">Precisión media</div></div>' +
+      '<div class="stat-card"><div class="num">' + pct(aggs[aggs.length - 1].accuracy) + '</div><div class="lbl">Última sesión</div></div>' +
+      '<div class="stat-card"><div class="num">' + (best != null ? (best / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Mejor tiempo medio</div></div>';
+
+    b2LastSecs = list.map(b2SessionSecs);
+    drawTimeChart($("#b2-evolution-chart"), b2LastSecs);
+    wireHeatToggle($("#b2-hist-heat-toggle"), $("#b2-error-heatmap"), {
+      acc: () => b2HeatAdapter(list),
+      last: () => b2HeatAdapter(list.slice(-1)),
+    }, "acc");
+    $("#b2-letter-stats").innerHTML = b2LetterTable(list) || '<p class="empty">Sin datos de letras.</p>';
+
+    listEl.innerHTML = list.slice().reverse().map((s) => {
+      const g = b2Aggregate(s);
+      const d = new Date(s.date);
+      const col = g.accuracy >= 0.8 ? "var(--ok)" : g.accuracy >= 0.5 ? "var(--ink)" : "var(--fail)";
+      return '<div class="history-row" data-id="' + s.id + '">' +
+        "<span>" + d.toLocaleDateString() + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "</span>" +
+        "<span>" + g.hits + "/" + g.total + " · " + (s.status === "completada" ? "✔" : "⏸") + "</span>" +
+        '<span class="pct" style="color:' + col + '">' + pct(g.accuracy) + "</span>" +
+        '<span class="go">Ver dashboard ▸</span>' +
+        '<button type="button" class="row-del" data-id="' + s.id + '" title="Borrar esta sesión">🗑</button>' +
+        "</div>";
+    }).join("");
+    listEl.querySelectorAll(".history-row").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".row-del")) {
+          e.stopPropagation();
+          if (confirm("¿Borrar esta sesión del historial? No se puede deshacer.")) {
+            replaceSessionsOf("block2", sessionsOf("block2").filter((s) => s.id !== +row.dataset.id));
+            b2RenderHistory();
+          }
+          return;
+        }
+        b2OpenDetail(+row.dataset.id);
+      });
+    });
+  }
+
+  let b2DetailId = null;
+  function b2OpenDetail(id) {
+    const all = sessionsOf("block2");
+    const idx = all.findIndex((s) => s.id === id);
+    if (idx < 0) return;
+    const rec = all[idx];
+    b2DetailId = id;
+    const d = new Date(rec.date);
+    $("#b2-detail-title").textContent = "Dashboard · " + d.toLocaleDateString() + " " +
+      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    $("#b2-detail-subtitle").textContent = MODE_LABEL[rec.modeId] +
+      " · " + (rec.attempts || []).length + " intentos · estado: " + rec.status + ".";
+    b2RenderDashboard($("#b2-detail-dashboard"), rec);
+    fillHeatmap($("#b2-detail-heat-one"), b2HeatAdapter([rec]));
+    fillHeatmap($("#b2-detail-heat-acc"), b2HeatAdapter(all.slice(0, idx + 1)));
+    showScreen("#screen-b2-detail");
+  }
+
+  // CSV del Bloque 2 (una fila por intento).
+  function b2ExportCsv() {
+    const rows = [[
+      "sesion_id", "fecha", "modalidad", "estado", "indice", "objetivo", "resultado",
+      "errores", "omision_o_incompleta", "tiempo_ms", "tiempo_primera_ms", "repeticiones_audio",
+    ]];
+    sessionsOf("block2").forEach((s) => {
+      (s.attempts || []).forEach((a, i) => {
+        if (s.modeId === "letter-search") {
+          rows.push([s.id, s.date, "localizar-letra", s.status, i + 1, a.target,
+            a.correct ? (a.errorsBefore ? "acierto_con_errores" : "acierto") : "omitida",
+            a.errorsBefore || 0, a.omitted ? 1 : 0, a.rt != null ? a.rt : "", "", a.audioRepeats || 0]);
+        } else {
+          rows.push([s.id, s.date, "formar-palabra", s.status, i + 1, a.word,
+            a.completed ? "completada" : "incompleta",
+            a.errorCount || 0, a.skipped ? 1 : 0, a.totalMs != null ? a.totalMs : "",
+            a.firstRt != null ? a.firstRt : "", a.audioRepeats || 0]);
+        }
+      });
+    });
+    downloadBlob("﻿" + rows.map((r) => r.join(";")).join("\r\n"),
+      "text/csv;charset=utf-8", "bloque2-letras-historial.csv");
+  }
+
+  // =====================================================================
+  //  ExportManager / ImportManager (perfil completo)
+  // =====================================================================
+  function exportProfileJSON() {
+    const p = activeProfile();
+    if (!p) return;
+    const data = {
+      schemaVersion: SCHEMA_VERSION, app: "rehabilitacion-visual", appVersion: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      profile: p,
+      configs: loadJSON(CFG_KEY2, {})[activeProfileId] || {},
+      sessions: allStoredSessions().filter((s) => s.profileId === activeProfileId),
+    };
+    const fname = ("perfil-" + p.firstName + "-" + p.lastName).toLowerCase()
+      .replace(/[^a-z0-9ñ-]+/gi, "-") + ".json";
+    downloadBlob(JSON.stringify(data, null, 2), "application/json", fname);
+  }
+
+  // =====================================================================
   //  Eventos de interfaz
   // =====================================================================
   function bindUI() {
@@ -1873,6 +3202,97 @@ button.link {
       if (f) importData(f);
       e.target.value = "";   // permitir reimportar el mismo archivo
     });
+
+    // ---- Perfiles ----
+    $("#profile-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const first = $("#pf-first").value.trim(), last = $("#pf-last").value.trim();
+      if (!first || !last) return;
+      $("#pf-first").value = ""; $("#pf-last").value = "";
+      createProfile(first, last);
+    });
+
+    // ---- Barra superior y menú ----
+    $("#topbar-menu").addEventListener("click", () => openMenu());
+    $("#topbar-switch").addEventListener("click", switchUser);
+    $("#menu-switch").addEventListener("click", switchUser);
+    $("#menu-b1-start").addEventListener("click", openBlock1);
+    $("#menu-b1-history").addEventListener("click", () => { renderHistory(); showScreen("#screen-history"); });
+    $("#menu-b2-start").addEventListener("click", openBlock2Config);
+    $("#menu-b2-history").addEventListener("click", () => { b2RenderHistory(); showScreen("#screen-b2-history"); });
+    $("#menu-export").addEventListener("click", exportProfileJSON);
+    $("#menu-import").addEventListener("click", () => $("#import-file").click());
+    $("#btn-b1-menu").addEventListener("click", () => openMenu());
+
+    // ---- Bloque 1: exportar la sesión del detalle ----
+    $("#btn-detail-export").addEventListener("click", () => {
+      const rec = loadSessions().find((s) => s.id === detailRecId);
+      if (rec) downloadBlob(JSON.stringify(rec, null, 2), "application/json",
+        "bloque1-sesion-" + rec.id + ".json");
+    });
+
+    // ---- Bloque 2: configuración ----
+    sync("#b2-count", "#b2-out-count");
+    sync("#b2-visible", "#b2-out-visible");
+    sync("#b2-min-size", "#b2-out-min", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-max-size", "#b2-out-max", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-exp", "#b2-out-exp", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-center-size", "#b2-out-center", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-excl", "#b2-out-excl");
+    sync("#b2-rate", "#b2-out-rate", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-vol", "#b2-out-vol", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-pause", "#b2-out-pause", (v) => parseFloat(v).toFixed(1));
+    const wlenOut = () => { $("#b2-out-wlen").textContent = $("#b2-wmin").value + "–" + $("#b2-wmax").value; };
+    $("#b2-wmin").addEventListener("input", wlenOut);
+    $("#b2-wmax").addEventListener("input", wlenOut);
+    wlenOut();
+    $("#b2-mode").addEventListener("input", () => {
+      $("#b2-count-label").firstChild.textContent =
+        ($("#b2-mode").value === "word-sequence" ? "Número de palabras: " : "Número de objetivos: ");
+    });
+    $("#b2-preset").addEventListener("input", () => {
+      const p = B2_PRESETS[$("#b2-preset").value];
+      if (p) b2ApplyConfig(p);
+    });
+    $("#b2-test-voice").addEventListener("click", () => {
+      unlockAudio();
+      const okV = speak("Ejemplo de voz. Letra eme. Palabra casa.");
+      if (!okV) $("#b2-voice-warn").textContent =
+        "⚠ Este navegador no dispone de síntesis de voz: la letra/palabra se mostrará por escrito.";
+    });
+    $("#b2-config-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      unlockAudio();
+      b2Start(b2ReadConfig());
+    });
+    $("#b2-btn-history").addEventListener("click", () => { b2RenderHistory(); showScreen("#screen-b2-history"); });
+    $("#b2-btn-menu").addEventListener("click", () => openMenu());
+
+    // ---- Bloque 2: controles de sesión ----
+    $("#b2-repeat").addEventListener("click", () => { if (b2 && b2.state === "running") b2Announce(true); });
+    $("#b2-skip").addEventListener("click", b2Skip);
+    $("#b2-word-restart").addEventListener("click", b2WordRestart);
+    $("#b2-pause").addEventListener("click", b2Pause);
+    $("#b2-resume").addEventListener("click", b2Resume);
+    $("#b2-finish").addEventListener("click", b2Finish);
+
+    // ---- Bloque 2: resultado, historial y detalle ----
+    $("#b2-btn-save").addEventListener("click", b2SaveSession);
+    $("#b2-btn-discard").addEventListener("click", () => {
+      if (confirm("¿Descartar esta sesión sin guardarla?")) { pendingB2 = null; openMenu(); }
+    });
+    $("#b2-hist-mode").querySelectorAll(".seg").forEach((b) => {
+      b.addEventListener("click", () => { b2HistMode = b.dataset.mode; b2RenderHistory(); });
+    });
+    $("#b2-export-csv").addEventListener("click", b2ExportCsv);
+    $("#b2-btn-back-config").addEventListener("click", openBlock2Config);
+    $("#b2-btn-back-menu").addEventListener("click", () => openMenu());
+    $("#b2-detail-back").addEventListener("click", () => { b2RenderHistory(); showScreen("#screen-b2-history"); });
+    $("#b2-detail-export").addEventListener("click", () => {
+      const rec = sessionsOf("block2").find((s) => s.id === b2DetailId);
+      if (rec) downloadBlob(JSON.stringify(rec, null, 2), "application/json",
+        "bloque2-sesion-" + rec.id + ".json");
+    });
   }
 
   function downloadBlob(content, mime, filename) {
@@ -1909,28 +3329,84 @@ button.link {
       "text/csv;charset=utf-8", "rehabilitacion-visual-historial.csv");
   }
 
-  // Importación de un JSON exportado: fusiona con lo existente (sin duplicar
-  // por id) y reordena cronológicamente.
+  // Importación de un JSON exportado por la propia aplicación.
+  // Acepta: (a) copia de perfil completo (schemaVersion>=3), (b) el formato
+  // antiguo del Bloque 1 (array plano o {sessions:[...]}).
   function importData(file) {
     const reader = new FileReader();
     reader.onload = function () {
       try {
-        let data = JSON.parse(reader.result);
-        if (data && !Array.isArray(data) && Array.isArray(data.sessions)) data = data.sessions;
-        if (!Array.isArray(data)) throw new Error("formato");
-        const valid = data.filter((s) => s && typeof s.id === "number" && Array.isArray(s.stimuli));
-        if (!valid.length) throw new Error("vacío");
-        const cur = loadSessions();
-        const ids = {};
-        cur.forEach((s) => { ids[s.id] = true; });
+        const data = JSON.parse(reader.result);
+
+        // (b) Formato antiguo: array de sesiones del Bloque 1.
+        let legacy = null;
+        if (Array.isArray(data)) legacy = data;
+        else if (data && Array.isArray(data.sessions) && !data.profile) legacy = data.sessions;
+        if (legacy) {
+          const valid = legacy.filter((s) => s && typeof s.id === "number" && Array.isArray(s.stimuli));
+          if (!valid.length) throw new Error("vacío");
+          if (!activeProfileId) { alert("Selecciona antes un perfil para importar estos datos."); return; }
+          if (!confirm("El archivo contiene " + valid.length + " sesión(es) del Bloque 1 (formato " +
+            "antiguo).\n¿Importarlas al perfil activo?")) return;
+          const cur = loadSessions();
+          const ids = {}; cur.forEach((s) => { ids[s.id] = true; });
+          let added = 0;
+          valid.forEach((s) => { if (!ids[s.id]) { cur.push(s); ids[s.id] = true; added++; } });
+          cur.sort((a, b) => a.id - b.id);
+          saveSessions(cur);
+          if ($("#screen-history").classList.contains("active")) renderHistory();
+          alert("Importación completada: " + added + " sesión(es) nueva(s).");
+          return;
+        }
+
+        // (a) Copia de perfil completo.
+        if (!data || !data.profile || !Array.isArray(data.sessions)) throw new Error("formato");
+        const p = data.profile;
+        const nSes = data.sessions.length;
+        const nB1 = data.sessions.filter((s) => (s.blockId || "block1") === "block1").length;
+        if (!confirm("Copia de seguridad del perfil «" + p.firstName + " " + p.lastName + "»\n" +
+          "Sesiones: " + nSes + " (Bloque 1: " + nB1 + " · Bloque 2: " + (nSes - nB1) + ")\n" +
+          "Exportada: " + (data.exportedAt || "¿?") + "\n\n¿Importar ahora?")) return;
+
+        const profiles = allProfiles();
+        let target = profiles.find((x) => x.id === p.id);
+        if (target) {
+          if (!confirm("Ya existe el perfil «" + target.firstName + " " + target.lastName +
+            "». Se combinarán los datos evitando duplicados. ¿Continuar?\n" +
+            "(«Cancelar» importa la copia como un perfil NUEVO.)")) {
+            target = null;   // importar como perfil nuevo
+          }
+        }
+        if (!target) {
+          target = {
+            id: profiles.some((x) => x.id === p.id) ? uid() : (p.id || uid()),
+            firstName: p.firstName || "Importado", lastName: p.lastName || "",
+            createdAt: p.createdAt || Date.now(), updatedAt: Date.now(),
+            lastActiveAt: p.lastActiveAt || null, preferences: p.preferences || {},
+          };
+          profiles.push(target); saveProfiles(profiles);
+        }
+        const cur = allStoredSessions();
+        const ids = {}; cur.forEach((s) => { ids[s.id] = true; });
         let added = 0;
-        valid.forEach((s) => { if (!ids[s.id]) { cur.push(s); ids[s.id] = true; added++; } });
-        cur.sort((a, b) => a.id - b.id);
-        saveSessions(cur);
-        renderHistory();
-        alert("Importación completada: " + added + " sesión(es) nueva(s). Total: " + cur.length + ".");
+        data.sessions.forEach((s) => {
+          if (s && s.id && !ids[s.id]) {
+            s.profileId = target.id;
+            if (!s.blockId) s.blockId = "block1";
+            cur.push(s); ids[s.id] = true; added++;
+          }
+        });
+        saveAllSessions(cur);
+        if (data.configs) {
+          const cfgs = loadJSON(CFG_KEY2, {});
+          cfgs[target.id] = data.configs;
+          saveJSON(CFG_KEY2, cfgs);
+        }
+        renderProfiles();
+        alert("Importación completada: perfil «" + target.firstName + " " + target.lastName +
+          "» con " + added + " sesión(es) nueva(s).");
       } catch (e) {
-        alert("El archivo no es un historial válido de esta aplicación.");
+        alert("El archivo no es una copia válida de esta aplicación.");
       }
     };
     reader.readAsText(file);
@@ -1938,8 +3414,10 @@ button.link {
 
   function init() {
     try {
+      migrateLegacy();          // datos de la versión anterior → almacén global
       bindUI();
-      showScreen("#screen-config");
+      renderProfiles();
+      showScreen("#screen-profiles");   // flujo obligatorio: primero el perfil
     } catch (e) {
       console.error(e);
       if (window.__showFatal) window.__showFatal(e.message);
