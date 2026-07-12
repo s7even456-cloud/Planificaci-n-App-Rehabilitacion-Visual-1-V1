@@ -223,14 +223,59 @@ kbd {
   padding: 2px 9px; vertical-align: middle; margin-left: 6px; white-space: nowrap;
 }
 
-/* Cuenta atrás antes del primer estímulo (da tiempo a fijar la mirada) */
+/* Cuenta atrás antes del primer estímulo (da tiempo a fijar la mirada).
+   Insignia oscura con número blanco: contrasta con el fondo claro y no se
+   confunde con los elementos del ejercicio (cruz/estímulos/letras). */
 .countdown {
-  position: absolute; left: 50%; top: 26%;
+  position: absolute; left: 50%; top: 24%;
   transform: translate(-50%, -50%);
-  font-size: clamp(3rem, 14vmin, 7rem); font-weight: 800;
-  color: var(--accent); z-index: 5; pointer-events: none;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  width: clamp(84px, 20vmin, 150px); height: clamp(84px, 20vmin, 150px);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(20, 24, 40, 0.85);
+  border: 0.6vmin solid #fff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  font-size: clamp(2.6rem, 11vmin, 5.5rem); font-weight: 800;
+  color: #fff; z-index: 5; pointer-events: none;
 }
+
+/* Selector de idioma (botón + panel con buscador) */
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.lang-sel { position: relative; }
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--border); background: #fff; border-radius: 10px;
+  padding: 7px 10px; font-size: 0.9rem;
+}
+.flag { width: 21px; height: 14px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 14px; line-height: 1; }
+.flag img { width: 21px; height: 14px; border-radius: 2px; display: block;
+  border: 0.5px solid rgba(0,0,0,0.15); }
+.lang-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  width: min(320px, 86vw); max-height: min(430px, 70vh);
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+}
+.lang-search {
+  margin: 8px; padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 0.95rem;
+}
+.lang-list { overflow-y: auto; padding: 0 6px 8px; }
+.lang-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 10px; border: none; background: none; border-radius: 8px;
+  font-size: 0.95rem; text-align: left; cursor: pointer;
+}
+.lang-item:hover, .lang-item.sel { background: #eef5f2; }
+.lang-item .li-partial { margin-left: auto; font-size: 0.7rem; color: var(--ink-soft); }
+
+/* Controles de pausa del Bloque 1 (mismos que B2) */
+.b1-controls {
+  position: fixed; top: 0; right: 0; z-index: 8;
+  display: flex; gap: 6px; padding: 8px;
+}
+.b1-controls .ghost { padding: 8px 12px; font-size: 0.85rem; opacity: 0.85; }
 
 /* Panel de distancia recomendada */
 .dist-reco {
@@ -527,17 +572,29 @@ button.link {
 
   <!-- ===================== BARRA SUPERIOR (usuario activo) ===================== -->
   <header id="topbar" class="topbar hidden">
-    <span class="topbar-user">👤 <b id="topbar-name">—</b></span>
-    <span class="topbar-actions">
-      <button type="button" id="topbar-menu" class="ghost">Menú</button>
-      <button type="button" id="topbar-switch" class="ghost">Cambiar de usuario</button>
+    <span class="topbar-left">
+      <span id="lang-sel" class="lang-sel">
+        <button type="button" id="lang-btn" class="lang-btn" aria-haspopup="listbox">
+          <span id="lang-cur-flag" class="flag"></span>
+          <span id="lang-cur-name">Español</span> ▾
+        </button>
+        <div id="lang-panel" class="lang-panel hidden" role="listbox">
+          <input type="text" id="lang-search" class="lang-search" data-i18n-ph="lang.search" placeholder="Buscar idioma…" autocomplete="off" />
+          <div id="lang-list" class="lang-list"></div>
+        </div>
+      </span>
+      <span class="topbar-user" id="topbar-user">👤 <b id="topbar-name">—</b></span>
+    </span>
+    <span class="topbar-actions" id="topbar-actions">
+      <button type="button" id="topbar-menu" class="ghost" data-i18n="nav.menu">Menú</button>
+      <button type="button" id="topbar-switch" class="ghost" data-i18n="nav.switch">Cambiar de usuario</button>
     </span>
   </header>
 
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v4.2</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.0</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -753,6 +810,20 @@ button.link {
       <div class="skip-edge bottom"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
       <div class="skip-edge left"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
       <div class="skip-edge right"><span class="skip-label"><span class="skip-ico">⊘</span>No la veo · doble toque</span></div>
+    </div>
+    <div class="b1-controls">
+      <button type="button" id="b1-pause-btn" class="ghost">⏸ <span data-i18n="ex.pause">Pausa</span></button>
+      <button type="button" id="b1-finish-btn" class="ghost danger">✕ <span data-i18n="ex.finish">Finalizar</span></button>
+    </div>
+    <div id="b1-pause-overlay" class="rotate-gate hidden">
+      <div class="rotate-card">
+        <div class="rotate-ico">⏸</div>
+        <h2 data-i18n="ex.pausedTitle">Sesión en pausa</h2>
+        <p data-i18n="ex.pausedText">Los tiempos están detenidos. Reanuda cuando estés preparado.</p>
+        <div class="rotate-actions">
+          <button type="button" id="b1-resume" class="primary">▶ <span data-i18n="ex.resume">Reanudar</span></button>
+        </div>
+      </div>
     </div>
     <div id="exercise-hud" class="hud">
       <span id="hud-progress">0 / 0</span>
@@ -1084,7 +1155,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "4.2";
+  const APP_VERSION = "5.0";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -1115,13 +1186,17 @@ button.link {
     if (id !== "#screen-profiles" && !activeProfileId) id = "#screen-profiles";
     document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
     $(id).classList.add("active");
-    // Barra superior: visible salvo en el selector y durante los ejercicios.
+    // Barra superior (con selector de idioma): visible en todas las pantallas
+    // SALVO durante los ejercicios, para aprovechar el área del ejercicio.
     const bar = $("#topbar");
     if (bar) {
-      const hide = id === "#screen-profiles" || id === "#screen-exercise" || id === "#screen-b2-exercise";
+      const hide = id === "#screen-exercise" || id === "#screen-b2-exercise";
       bar.classList.toggle("hidden", hide);
       const p = activeProfile();
       $("#topbar-name").textContent = p ? (p.firstName + " " + p.lastName) : "—";
+      // Sin perfil activo (selector de perfiles): solo se muestra el idioma.
+      $("#topbar-user").classList.toggle("hidden", !p);
+      $("#topbar-actions").classList.toggle("hidden", !p);
     }
     // Redibuja los gráficos cuando su pantalla ya es visible (para medir bien su
     // ancho real; dibujarlos ocultos daría ancho 0).
@@ -1483,10 +1558,10 @@ button.link {
       ring.classList.remove("hidden");
       ring.style.width = `min(${config.stimSize}vw, ${config.stimSize}vh)`;
       ring.style.height = `min(${config.stimSize}vw, ${config.stimSize}vh)`;
-      $("#hud-hint").innerHTML = 'Marca con un clic donde percibas el estímulo · <kbd>Esc</kbd> salir';
+      $("#hud-hint").innerHTML = t("ex.markClick") + ' · <kbd>Esc</kbd>';
     } else {
       ring.classList.add("hidden");
-      $("#hud-hint").innerHTML = 'Toca donde percibas el estímulo · <kbd>Esc</kbd> salir';
+      $("#hud-hint").innerHTML = t("ex.markTap") + ' · <kbd>Esc</kbd>';
     }
 
     renderFixation();
@@ -1541,7 +1616,7 @@ button.link {
   function runCountdown(done, elSel) {
     locked = true;
     const el = $(elSel || "#countdown");
-    let n = 3;
+    let n = 5;
     el.textContent = n;
     el.classList.remove("hidden");
     clearCdTimer();
@@ -1564,6 +1639,7 @@ button.link {
   function scheduleStimulus(index) {
     clearStageMarks();
     locked = true;
+    b1Phase = "isi";
     clearIsiTimer();
     const maxMs = session.config.isi * 1000;
     const delay = maxMs > 0 ? 300 + Math.random() * Math.max(0, maxMs - 300) : 0;
@@ -1574,6 +1650,7 @@ button.link {
   function showStimulus(index) {
     clearStageMarks();           // la marca anterior ya no debe verse
     locked = false;              // se admite una nueva marca
+    b1Phase = "stim";
     const st = session.stimuli[index];
     st.shownAt = performance.now();
 
@@ -1638,6 +1715,7 @@ button.link {
     st.hit = st.dist <= session.config.tolerance;
 
     locked = true;            // no admitir más marcas hasta el siguiente estímulo
+    b1Phase = "view";
     clearSkipTimer();
     hideSkipFrame();
     drawGomet(markXpct, markYpct);
@@ -1674,7 +1752,7 @@ button.link {
   function onExerciseKey(e) {
     if (e.code === "Escape") {
       e.preventDefault();
-      if (confirm("¿Salir del ejercicio? Se perderá la sesión actual.")) {
+      if (confirm(t("ex.confirmExit"))) {
         cleanupExercise();
         showScreen("#screen-config");
       }
@@ -1763,6 +1841,8 @@ button.link {
     unlockOrientation();
     exitFs();
     begun = false;
+    b1Paused = false; b1Phase = "stim";
+    $("#b1-pause-overlay").classList.add("hidden");
     $("#rotate-gate").classList.add("hidden");
     $("#countdown").classList.add("hidden");
     clearSkipTimer(); clearViewTimer(); clearIsiTimer(); clearCdTimer();
@@ -1873,15 +1953,15 @@ button.link {
     };
     const stats = `
       <div class="dash-stats">
-        <div class="stat-card"><div class="num">${pct(a.accuracy)}</div><div class="lbl">Precisión</div></div>
-        <div class="stat-card"><div class="num">${a.hits}/${a.total}</div><div class="lbl">Aciertos</div></div>
-        <div class="stat-card"><div class="num">${a.skipped}</div><div class="lbl">No vistos</div></div>
-        <div class="stat-card"><div class="num">${a.meanErr != null ? a.meanErr.toFixed(2) + "×" : "—"}</div><div class="lbl">Error medio (radios)</div></div>
-        <div class="stat-card"><div class="num">${a.meanRt != null ? (a.meanRt/1000).toFixed(1) + "s" : "—"}</div><div class="lbl">Tiempo medio</div></div>
-        <div class="stat-card"><div class="num" style="font-size:1rem">${biasTxt}</div><div class="lbl">Sesgo del error</div></div>
-        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiL, a.hemiR)}</div><div class="lbl">Campo izq / der</div></div>
-        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiT, a.hemiB)}</div><div class="lbl">Campo sup / inf</div></div>
-        <div class="stat-card"><div class="num">${record.duration ? fmtDur(record.duration) : "—"}</div><div class="lbl">Duración</div></div>
+        <div class="stat-card"><div class="num">${pct(a.accuracy)}</div><div class="lbl">${t("st.prec")}</div></div>
+        <div class="stat-card"><div class="num">${a.hits}/${a.total}</div><div class="lbl">${t("st.hits")}</div></div>
+        <div class="stat-card"><div class="num">${a.skipped}</div><div class="lbl">${t("st.notSeen")}</div></div>
+        <div class="stat-card"><div class="num">${a.meanErr != null ? a.meanErr.toFixed(2) + "×" : "—"}</div><div class="lbl">${t("st.meanErr")}</div></div>
+        <div class="stat-card"><div class="num">${a.meanRt != null ? (a.meanRt/1000).toFixed(1) + "s" : "—"}</div><div class="lbl">${t("st.meanTime")}</div></div>
+        <div class="stat-card"><div class="num" style="font-size:1rem">${biasTxt}</div><div class="lbl">${t("st.bias")}</div></div>
+        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiL, a.hemiR)}</div><div class="lbl">${t("st.fieldLR")}</div></div>
+        <div class="stat-card"><div class="num" style="font-size:1.05rem">${hemiPair(a.hemiT, a.hemiB)}</div><div class="lbl">${t("st.fieldTB")}</div></div>
+        <div class="stat-card"><div class="num">${record.duration ? fmtDur(record.duration) : "—"}</div><div class="lbl">${t("st.duration")}</div></div>
       </div>`;
 
     // --- Mapa: estímulos, gomets y líneas de error ---
@@ -1936,10 +2016,10 @@ button.link {
 
   function describeBias(bx, by) {
     const mag = Math.hypot(bx, by);
-    if (mag < 0.3) return "centrado";
-    const h = bx > 0.2 ? "derecha" : bx < -0.2 ? "izquierda" : "";
-    const v = by > 0.2 ? "abajo" : by < -0.2 ? "arriba" : "";
-    return [v, h].filter(Boolean).join("-") || "centrado";
+    if (mag < 0.3) return t("bias.center");
+    const h = bx > 0.2 ? t("bias.right") : bx < -0.2 ? t("bias.left") : "";
+    const v = by > 0.2 ? t("bias.down") : by < -0.2 ? t("bias.up") : "";
+    return [v, h].filter(Boolean).join("-") || t("bias.center");
   }
 
   // =====================================================================
@@ -1959,7 +2039,7 @@ button.link {
   }
 
   function deleteSession(id) {
-    if (!confirm("¿Borrar esta sesión del historial? No se puede deshacer.")) return;
+    if (!confirm(t("h.confirmDelSes"))) return;
     saveSessions(loadSessions().filter((s) => s.id !== id));
     renderHistory();
   }
@@ -1970,7 +2050,7 @@ button.link {
     const listEl = $("#history-list");
 
     if (!list.length) {
-      summary.innerHTML = '<p class="empty">Aún no hay sesiones guardadas.</p>';
+      summary.innerHTML = '<p class="empty">' + t("h.none") + "</p>";
       listEl.innerHTML = "";
       drawChart([]); fillHeatmap($("#error-heatmap"), []);
       return;
@@ -1983,10 +2063,10 @@ button.link {
     const best = aggs.reduce((m, g) => Math.max(m, g.accuracy), 0);
 
     summary.innerHTML = `
-      <div class="stat-card"><div class="num">${n}</div><div class="lbl">Sesiones</div></div>
-      <div class="stat-card"><div class="num">${pct(avgAcc)}</div><div class="lbl">Precisión media</div></div>
-      <div class="stat-card"><div class="num">${pct(last.accuracy)}</div><div class="lbl">Última sesión</div></div>
-      <div class="stat-card"><div class="num">${pct(best)}</div><div class="lbl">Mejor sesión</div></div>`;
+      <div class="stat-card"><div class="num">${n}</div><div class="lbl">${t("h.sessions")}</div></div>
+      <div class="stat-card"><div class="num">${pct(avgAcc)}</div><div class="lbl">${t("h.precAvg")}</div></div>
+      <div class="stat-card"><div class="num">${pct(last.accuracy)}</div><div class="lbl">${t("h.lastSes")}</div></div>
+      <div class="stat-card"><div class="num">${pct(best)}</div><div class="lbl">${t("h.best")}</div></div>`;
 
     listEl.innerHTML = list.slice().reverse().map((s) => {
       const g = aggregate(s.stimuli);
@@ -1994,9 +2074,9 @@ button.link {
       const col = g.accuracy >= 0.8 ? "var(--ok)" : g.accuracy >= 0.5 ? "var(--ink)" : "var(--fail)";
       return `<div class="history-row" data-id="${s.id}">
         <span>${d.toLocaleDateString()} · ${d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>
-        <span>${g.hits}/${g.total} aciertos</span>
+        <span>${g.hits}/${g.total} ${t("h.hits2")}</span>
         <span class="pct" style="color:${col}">${pct(g.accuracy)}</span>
-        <span class="go">Ver dashboard ▸</span>
+        <span class="go">${t("h.view")}</span>
         <button type="button" class="row-del" data-id="${s.id}" title="Borrar esta sesión" aria-label="Borrar esta sesión">🗑</button>
       </div>`;
     }).join("");
@@ -2254,10 +2334,10 @@ button.link {
   }
 
   function toleranceLabel(v) {
-    if (v <= 0.8) return "Alta";
-    if (v <= 1.4) return "Normal";
-    if (v <= 2.0) return "Baja";
-    return "Muy baja";
+    if (v <= 0.8) return t("tol.high");
+    if (v <= 1.4) return t("tol.normal");
+    if (v <= 2.0) return t("tol.low");
+    return t("tol.vlow");
   }
 
   // ---- Distancia de uso recomendada según el tamaño físico de la pantalla ----
@@ -2320,7 +2400,7 @@ button.link {
     const list = allProfiles();
     const wrap = $("#profile-list");
     const lastActive = localStorage.getItem(ACTIVE_KEY);
-    wrap.innerHTML = list.length ? "" : '<p class="empty">Aún no hay perfiles. Crea el primero.</p>';
+    wrap.innerHTML = list.length ? "" : '<p class="empty">' + t("pf.none") + "</p>";
     list.forEach((p) => {
       const card = document.createElement("div");
       card.className = "profile-card";
@@ -2330,9 +2410,9 @@ button.link {
       const star = p.id === lastActive ? " ⭐" : "";
       card.innerHTML =
         '<span><span class="p-name">' + escapeHtml(p.firstName + " " + p.lastName) + star + "</span><br>" +
-        '<span class="p-meta">Creado: ' + fmtDate(p.createdAt) +
-        " · Última sesión: " + fmtDate(lastSessionTime(p.id)) +
-        " · Sesiones: " + sessionCount(p.id) + "</span></span>" +
+        '<span class="p-meta">' + t("pf.created") + ": " + fmtDate(p.createdAt) +
+        " · " + t("pf.lastSession") + ": " + fmtDate(lastSessionTime(p.id)) +
+        " · " + t("pf.sessions") + ": " + sessionCount(p.id) + "</span></span>" +
         '<span class="p-actions">' +
         '<button type="button" class="p-edit" title="Editar" aria-label="Editar perfil">✏</button>' +
         '<button type="button" class="p-del" title="Eliminar" aria-label="Eliminar perfil">🗑</button></span>';
@@ -2430,7 +2510,7 @@ button.link {
     const onR1 = $("#screen-result").classList.contains("active") && pendingRecord;
     const onR2 = $("#screen-b2-result").classList.contains("active") && pendingB2;
     if (onR1 || onR2) {
-      if (!confirm("Hay un resultado sin guardar. ¿Salir y descartarlo?")) return false;
+      if (!confirm(t("g.unsaved"))) return false;
       pendingRecord = null; pendingB2 = null; session = null;
     }
     return true;
@@ -2439,16 +2519,15 @@ button.link {
   function openMenu() {
     if (!leaveGuard()) return;
     const p = activeProfile();
-    $("#menu-greeting").textContent = "Perfil activo: " + p.firstName + " " + p.lastName +
-      ". Elige un ejercicio o gestiona los datos.";
+    $("#menu-greeting").textContent = t("menu.greeting", p.firstName + " " + p.lastName);
     const b1 = sessionsOf("block1"), b2s = sessionsOf("block2");
     const totalMs = b1.concat(b2s).reduce((a, s) => a + (s.duration || 0), 0);
     const lastT = lastSessionTime(activeProfileId);
     $("#menu-overview").innerHTML =
-      '<div class="stat-card"><div class="num">' + b1.length + '</div><div class="lbl">Sesiones Bloque 1</div></div>' +
-      '<div class="stat-card"><div class="num">' + b2s.length + '</div><div class="lbl">Sesiones Bloque 2</div></div>' +
-      '<div class="stat-card"><div class="num">' + fmtDate(lastT) + '</div><div class="lbl">Última actividad</div></div>' +
-      '<div class="stat-card"><div class="num">' + fmtDur(totalMs) + '</div><div class="lbl">Tiempo total de uso</div></div>';
+      '<div class="stat-card"><div class="num">' + b1.length + '</div><div class="lbl">' + t("menu.sesB1") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + b2s.length + '</div><div class="lbl">' + t("menu.sesB2") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + fmtDate(lastT) + '</div><div class="lbl">' + t("menu.last") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + fmtDur(totalMs) + '</div><div class="lbl">' + t("menu.time") + '</div></div>';
     showScreen("#screen-menu");
   }
 
@@ -2488,15 +2567,26 @@ button.link {
     });
     if (prev) sel.value = prev;   // conservar la selección si sigue disponible
   }
-  function speak(text) {
+  function speak(text, forceLang) {
     if (!speechAvailable()) return false;
     try {
       speechSynthesis.cancel();     // evitar locuciones solapadas
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "es-ES";
+      const uiTts = (typeof langDef === "function") ? langDef()[3] : "es-ES";
+      u.lang = forceLang || uiTts;
       const cfg = (b2 && b2.config) ? b2.config : null;
-      const v = esVoice(cfg ? cfg.voice : $("#b2-voice") ? $("#b2-voice").value : "");
-      if (v) u.voice = v;
+      if (u.lang.indexOf("es") === 0) {
+        // En español se respeta la voz elegida en la configuración.
+        const v = esVoice(cfg ? cfg.voice : $("#b2-voice") ? $("#b2-voice").value : "");
+        if (v) u.voice = v;
+      } else {
+        try {
+          const vs = (speechSynthesis.getVoices() || [])
+            .filter((x) => x.lang && x.lang.toLowerCase().indexOf(u.lang.slice(0, 2).toLowerCase()) === 0);
+          const v2 = vs.find((x) => x.localService) || vs[0];
+          if (v2) u.voice = v2;
+        } catch (e) { /* voz por defecto */ }
+      }
       u.rate = cfg ? cfg.rate : parseFloat($("#b2-rate").value || 0.9);
       u.volume = cfg ? cfg.volume : 1;
       speechSynthesis.speak(u);
@@ -2509,8 +2599,14 @@ button.link {
     Q: "cu", R: "erre", S: "ese", T: "te", U: "u", V: "uve", W: "uve doble",
     X: "equis", Y: "i griega", Z: "zeta",
   };
-  function speakLetter(ch) { return speak("Letra " + (LETTER_NAMES[ch.toUpperCase()] || ch)); }
-  function speakWord(w) { return speak(w.toLowerCase()); }
+  // Letras: se anuncian en el idioma de la interfaz (el TTS pronuncia el nombre
+  // de la letra en ese idioma). En español se usan los nombres explícitos.
+  function speakLetter(ch) {
+    if (curLangCode === "es") return speak("Letra " + (LETTER_NAMES[ch.toUpperCase()] || ch));
+    return speak(t("ex.speakLetter") + " " + ch.toUpperCase());
+  }
+  // Palabras: son contenido del ejercicio (banco en español) → siempre es-ES.
+  function speakWord(w) { return speak(w.toLowerCase(), "es-ES"); }
 
   // =====================================================================
   //  Block2Controller: ejercicio de letras
@@ -2740,11 +2836,10 @@ button.link {
 
     $("#b2-word-restart").classList.toggle("hidden", cfg.mode !== "word-sequence");
     // Texto de la banda perimetral según la modalidad.
-    const skipTxt = cfg.mode === "word-sequence"
-      ? "Saltar palabra · doble toque" : "No la veo · siguiente · doble toque";
+    const skipTxt = cfg.mode === "word-sequence" ? t("ex.bandWord") : t("ex.bandFind");
     document.querySelectorAll("#b2-skip-frame .b2-skip-txt").forEach((el) => { el.textContent = skipTxt; });
     $("#b2-written-target").classList.add("hidden");
-    $("#b2-hint").textContent = "Mantén la mirada en el punto central";
+    $("#b2-hint").textContent = t("ex.fixHint");
 
     showScreen("#screen-b2-exercise");
     requestFs();
@@ -2898,7 +2993,7 @@ button.link {
       cur.lastT = now;
       cur.pos++;
       b2FlashLetter(letter, true); sndOk(); vibrate(35);
-      $("#b2-hint").textContent = "Palabra: " + cur.pos + " de " + cur.word.length + " letras";
+      $("#b2-hint").textContent = t("ex.wordProg", cur.pos, cur.word.length);
       if (cur.pos >= cur.word.length) {
         b2.attempts.push({
           word: cur.word, completed: true, skipped: false,
@@ -2911,7 +3006,7 @@ button.link {
         });
         b2ClearSkipTimer(); b2HideSkipFrame();
         b2.ti++; b2.state = "wait";
-        $("#b2-hint").textContent = "Mantén la mirada en el punto central";
+        $("#b2-hint").textContent = t("ex.fixHint");
         b2Timer = setTimeout(b2NextTarget, b2.config.pause * 1000);
       }
     } else {
@@ -2951,7 +3046,7 @@ button.link {
   function b2WordRestart() {
     if (!b2 || b2.state !== "running" || b2.config.mode !== "word-sequence") return;
     b2.cur.pos = 0; b2.cur.restarted++;
-    $("#b2-hint").textContent = "Palabra reiniciada";
+    $("#b2-hint").textContent = t("ex.wordRestarted");
     b2Announce(true);
   }
 
@@ -2986,7 +3081,7 @@ button.link {
   function b2Finish() {
     if (!b2) return;
     const done = b2.ti >= b2.targets.length;
-    if (!done && !confirm("¿Finalizar la sesión? Se conservarán los intentos ya realizados.")) return;
+    if (!done && !confirm(t("ex.confirmFinish"))) return;
     b2End(done ? "completada" : "interrumpida");
   }
 
@@ -3090,7 +3185,7 @@ button.link {
   }
   function b2HeatAdapter(recs) { return recs.map((r) => ({ stimuli: b2HeatPoints(r) })); }
 
-  const MODE_LABEL = { "letter-search": "Localizar letra", "word-sequence": "Formar palabra" };
+  function modeLabel(m) { return m === "word-sequence" ? t("b2.modB") : t("b2.modA"); }
 
   function b2RenderDashboard(el, rec) {
     const a = b2Aggregate(rec);
@@ -3105,21 +3200,21 @@ button.link {
     };
     let cards =
       '<div class="dash-stats">' +
-      '<div class="stat-card"><div class="num">' + pct(a.accuracy) + '</div><div class="lbl">' + (isWord ? "Precisión de letras" : "Precisión (1.ᵉʳ intento)") + "</div></div>" +
-      '<div class="stat-card"><div class="num">' + a.hits + "/" + a.total + '</div><div class="lbl">' + (isWord ? "Palabras completadas" : "Aciertos a la primera") + "</div></div>" +
-      '<div class="stat-card"><div class="num">' + a.errors + '</div><div class="lbl">Errores</div></div>' +
-      '<div class="stat-card"><div class="num">' + a.omissions + '</div><div class="lbl">' + (isWord ? "Incompletas" : "Omisiones") + "</div></div>" +
-      '<div class="stat-card"><div class="num">' + (a.meanRt != null ? (a.meanRt / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + (isWord ? "Tiempo medio/palabra" : "Tiempo medio") + "</div></div>";
+      '<div class="stat-card"><div class="num">' + pct(a.accuracy) + '</div><div class="lbl">' + (isWord ? t("st.precLetters") : t("st.precFirst")) + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + a.hits + "/" + a.total + '</div><div class="lbl">' + (isWord ? t("st.wordsDone") : t("st.firstTry")) + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + a.errors + '</div><div class="lbl">' + t("st.errors") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + a.omissions + '</div><div class="lbl">' + (isWord ? t("st.incomplete") : t("st.omissions")) + "</div></div>" +
+      '<div class="stat-card"><div class="num">' + (a.meanRt != null ? (a.meanRt / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + (isWord ? t("st.meanWord") : t("st.meanTime")) + "</div></div>";
     if (isWord) {
       cards +=
-        '<div class="stat-card"><div class="num">' + (a.meanLetter != null ? (a.meanLetter / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Tiempo medio/letra</div></div>' +
-        '<div class="stat-card"><div class="num">' + (a.meanFirst != null ? (a.meanFirst / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Hasta 1.ª selección</div></div>';
+        '<div class="stat-card"><div class="num">' + (a.meanLetter != null ? (a.meanLetter / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + t("st.meanLetter") + '</div></div>' +
+        '<div class="stat-card"><div class="num">' + (a.meanFirst != null ? (a.meanFirst / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + t("st.firstSel") + '</div></div>';
     }
     cards +=
-      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiL, a.hemiR) + '</div><div class="lbl">Campo izq / der</div></div>' +
-      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiT, a.hemiB) + '</div><div class="lbl">Campo sup / inf</div></div>' +
-      '<div class="stat-card"><div class="num">' + (rec.duration ? fmtDur(rec.duration) : "—") + '</div><div class="lbl">Duración</div></div>' +
-      '<div class="stat-card"><div class="num">' + (a.audioRepeats || 0) + '</div><div class="lbl">Repeticiones de audio</div></div>' +
+      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiL, a.hemiR) + '</div><div class="lbl">' + t("st.fieldLR") + '</div></div>' +
+      '<div class="stat-card"><div class="num" style="font-size:1.05rem">' + hemiPair(a.hemiT, a.hemiB) + '</div><div class="lbl">' + t("st.fieldTB") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + (rec.duration ? fmtDur(rec.duration) : "—") + '</div><div class="lbl">' + t("st.duration") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + (a.audioRepeats || 0) + '</div><div class="lbl">' + t("st.audioReps") + '</div></div>' +
       "</div>";
     el.innerHTML = cards + b2LetterTable([rec]);
   }
@@ -3152,8 +3247,9 @@ button.link {
     }).filter((r) => r.asked || r.err);
     if (!rows.length) return "";
     rows.sort((a, b) => b.err - a.err || b.asked - a.asked);
-    let html = '<div class="letter-stats"><table><tr><th>Letra</th><th>Pedida</th><th>Aciertos</th>' +
-      "<th>Errores</th><th>T. medio</th><th>Confundida con</th></tr>";
+    let html = '<div class="letter-stats"><table><tr><th>' + t("h.thLetter") + "</th><th>" + t("h.thAsked") +
+      "</th><th>" + t("h.thHits") + "</th><th>" + t("h.thErrors") + "</th><th>" + t("h.thTime") +
+      "</th><th>" + t("h.thConf") + "</th></tr>";
     rows.slice(0, 12).forEach((r) => {
       html += '<tr><td class="l">' + r.l + "</td><td>" + r.asked + "</td><td>" + r.ok +
         "</td><td>" + (r.err ? '<span style="color:var(--fail)">' + r.err + "</span>" : "0") +
@@ -3164,7 +3260,7 @@ button.link {
 
   function b2RenderResult() {
     const rec = pendingB2;
-    $("#b2-result-subtitle").textContent = MODE_LABEL[rec.modeId] + " · estado: " + rec.status + ".";
+    $("#b2-result-subtitle").textContent = modeLabel(rec.modeId) + " · " + t("b2.state") + ": " + rec.status + ".";
     b2RenderDashboard($("#b2-result-dashboard"), rec);
     wireHeatToggle($("#b2-result-heat-toggle"), $("#b2-result-heatmap"), {
       one: () => b2HeatAdapter([rec]),
@@ -3195,7 +3291,7 @@ button.link {
     const summary = $("#b2-history-summary");
     const listEl = $("#b2-history-list");
     if (!list.length) {
-      summary.innerHTML = '<p class="empty">Aún no hay sesiones de esta modalidad.</p>';
+      summary.innerHTML = '<p class="empty">' + t("h.noneMode") + "</p>";
       listEl.innerHTML = "";
       b2LastSecs = [];
       drawTimeChart($("#b2-evolution-chart"), []);
@@ -3209,12 +3305,12 @@ button.link {
     const withRt = aggs.filter((g) => g.meanRt != null);
     const best = withRt.length ? Math.min.apply(null, withRt.map((g) => g.meanRt)) : null;
     summary.innerHTML =
-      '<div class="stat-card"><div class="num">' + list.length + '</div><div class="lbl">Sesiones</div></div>' +
-      '<div class="stat-card"><div class="num">' + compl + '</div><div class="lbl">Completadas</div></div>' +
-      '<div class="stat-card"><div class="num">' + (list.length - compl) + '</div><div class="lbl">Interrumpidas</div></div>' +
-      '<div class="stat-card"><div class="num">' + pct(avgAcc) + '</div><div class="lbl">Precisión media</div></div>' +
-      '<div class="stat-card"><div class="num">' + pct(aggs[aggs.length - 1].accuracy) + '</div><div class="lbl">Última sesión</div></div>' +
-      '<div class="stat-card"><div class="num">' + (best != null ? (best / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">Mejor tiempo medio</div></div>';
+      '<div class="stat-card"><div class="num">' + list.length + '</div><div class="lbl">' + t("h.sessions") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + compl + '</div><div class="lbl">' + t("h.completed") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + (list.length - compl) + '</div><div class="lbl">' + t("h.interrupted") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + pct(avgAcc) + '</div><div class="lbl">' + t("h.precAvg") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + pct(aggs[aggs.length - 1].accuracy) + '</div><div class="lbl">' + t("h.lastSes") + '</div></div>' +
+      '<div class="stat-card"><div class="num">' + (best != null ? (best / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + t("h.bestT") + '</div></div>';
 
     b2LastSecs = list.map(b2SessionSecs);
     drawTimeChart($("#b2-evolution-chart"), b2LastSecs);
@@ -3232,7 +3328,7 @@ button.link {
         "<span>" + d.toLocaleDateString() + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + "</span>" +
         "<span>" + g.hits + "/" + g.total + " · " + (s.status === "completada" ? "✔" : "⏸") + "</span>" +
         '<span class="pct" style="color:' + col + '">' + pct(g.accuracy) + "</span>" +
-        '<span class="go">Ver dashboard ▸</span>' +
+        '<span class="go">' + t("h.view") + '</span>' +
         '<button type="button" class="row-del" data-id="' + s.id + '" title="Borrar esta sesión">🗑</button>' +
         "</div>";
     }).join("");
@@ -3240,7 +3336,7 @@ button.link {
       row.addEventListener("click", (e) => {
         if (e.target.closest(".row-del")) {
           e.stopPropagation();
-          if (confirm("¿Borrar esta sesión del historial? No se puede deshacer.")) {
+          if (confirm(t("h.confirmDelSes"))) {
             replaceSessionsOf("block2", sessionsOf("block2").filter((s) => s.id !== +row.dataset.id));
             b2RenderHistory();
           }
@@ -3261,8 +3357,8 @@ button.link {
     const d = new Date(rec.date);
     $("#b2-detail-title").textContent = "Dashboard · " + d.toLocaleDateString() + " " +
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    $("#b2-detail-subtitle").textContent = MODE_LABEL[rec.modeId] +
-      " · " + (rec.attempts || []).length + " intentos · estado: " + rec.status + ".";
+    $("#b2-detail-subtitle").textContent = modeLabel(rec.modeId) +
+      " · " + (rec.attempts || []).length + " " + t("b2.tries") + " · " + t("b2.state") + ": " + rec.status + ".";
     b2RenderDashboard($("#b2-detail-dashboard"), rec);
     fillHeatmap($("#b2-detail-heat-one"), b2HeatAdapter([rec]));
     fillHeatmap($("#b2-detail-heat-acc"), b2HeatAdapter(all.slice(0, idx + 1)));
@@ -3309,6 +3405,576 @@ button.link {
     const fname = ("perfil-" + p.firstName + "-" + p.lastName).toLowerCase()
       .replace(/[^a-z0-9ñ-]+/gi, "-") + ".json";
     downloadBlob(JSON.stringify(data, null, 2), "application/json", fname);
+  }
+
+  // =====================================================================
+  //  I18N: idiomas, banderas, selector con buscador y traducción de la UI
+  //  Los 11 idiomas indicados están traducidos al completo; el resto de la
+  //  lista mundial usa inglés como respaldo hasta añadir su diccionario.
+  // =====================================================================
+  const LANG_KEY = "rvp_lang";
+  const SVG = "data:image/svg+xml,";
+  const F_CA = SVG + "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 27 18'%3E%3Crect width='27' height='18' fill='%23FCDD09'/%3E%3Cpath stroke='%23DA121A' stroke-width='2' d='M0 3h27M0 7h27M0 11h27M0 15h27'/%3E%3C/svg%3E";
+  const F_VA = SVG + "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 27 18'%3E%3Crect width='27' height='18' fill='%23FCDD09'/%3E%3Cpath stroke='%23DA121A' stroke-width='2' d='M0 3h27M0 7h27M0 11h27M0 15h27'/%3E%3Crect width='6.5' height='18' fill='%230073C7'/%3E%3C/svg%3E";
+  const F_GL = SVG + "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 27 18'%3E%3Crect width='27' height='18' fill='%23fff'/%3E%3Cpath d='M0 0L27 18' stroke='%230073C7' stroke-width='4'/%3E%3C/svg%3E";
+  const F_EU = SVG + "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 27 18'%3E%3Crect width='27' height='18' fill='%23D52B1E'/%3E%3Cpath d='M0 0L27 18M27 0L0 18' stroke='%23009B48' stroke-width='2.6'/%3E%3Cpath d='M13.5 0v18M0 9h27' stroke='%23fff' stroke-width='2.6'/%3E%3C/svg%3E";
+  // [código, nombre nativo, bandera (emoji o SVG), código TTS, RTL]
+  const LANGS = [
+    ["es", "Español", "🇪🇸", "es-ES"], ["ca", "Català", F_CA, "ca-ES"],
+    ["va", "Valencià", F_VA, "ca-ES"], ["gl", "Galego", F_GL, "gl-ES"],
+    ["eu", "Euskera", F_EU, "eu-ES"], ["en", "English", "🇬🇧", "en-GB"],
+    ["pt", "Português", "🇵🇹", "pt-PT"], ["it", "Italiano", "🇮🇹", "it-IT"],
+    ["fr", "Français", "🇫🇷", "fr-FR"], ["de", "Deutsch", "🇩🇪", "de-DE"],
+    ["ru", "Русский язык", "🇷🇺", "ru-RU"], ["zh", "中文", "🇨🇳", "zh-CN"],
+    ["ja", "日本語", "🇯🇵", "ja-JP"], ["ko", "한국어", "🇰🇷", "ko-KR"],
+    ["ar", "العربية", "🇸🇦", "ar-SA", 1], ["hi", "हिन्दी", "🇮🇳", "hi-IN"],
+    ["bn", "বাংলা", "🇧🇩", "bn-BD"], ["tr", "Türkçe", "🇹🇷", "tr-TR"],
+    ["pl", "Polski", "🇵🇱", "pl-PL"], ["nl", "Nederlands", "🇳🇱", "nl-NL"],
+    ["uk", "Українська", "🇺🇦", "uk-UA"], ["ro", "Română", "🇷🇴", "ro-RO"],
+    ["el", "Ελληνικά", "🇬🇷", "el-GR"], ["sv", "Svenska", "🇸🇪", "sv-SE"],
+    ["no", "Norsk", "🇳🇴", "nb-NO"], ["da", "Dansk", "🇩🇰", "da-DK"],
+    ["fi", "Suomi", "🇫🇮", "fi-FI"], ["cs", "Čeština", "🇨🇿", "cs-CZ"],
+    ["hu", "Magyar", "🇭🇺", "hu-HU"], ["bg", "Български", "🇧🇬", "bg-BG"],
+    ["sr", "Српски", "🇷🇸", "sr-RS"], ["hr", "Hrvatski", "🇭🇷", "hr-HR"],
+    ["sk", "Slovenčina", "🇸🇰", "sk-SK"], ["id", "Bahasa Indonesia", "🇮🇩", "id-ID"],
+    ["ms", "Bahasa Melayu", "🇲🇾", "ms-MY"], ["vi", "Tiếng Việt", "🇻🇳", "vi-VN"],
+    ["th", "ไทย", "🇹🇭", "th-TH"], ["he", "עברית", "🇮🇱", "he-IL", 1],
+    ["fa", "فارسی", "🇮🇷", "fa-IR", 1], ["ur", "اردو", "🇵🇰", "ur-PK", 1],
+    ["sw", "Kiswahili", "🇰🇪", "sw-KE"],
+  ];
+
+  const ES = {
+    "nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…","lang.partial":"parcial",
+    "pf.subtitle":"Selecciona un perfil para empezar, o crea uno nuevo. Cada perfil guarda sus propias sesiones, resultados y configuraciones.",
+    "pf.create":"Crear perfil nuevo","pf.first":"Nombre","pf.last":"Apellido(s)","pf.createBtn":"Crear perfil",
+    "pf.privacy":"Los datos se almacenan localmente en este dispositivo. Realiza copias de seguridad periódicas mediante la función Exportar.",
+    "pf.created":"Creado","pf.lastSession":"Última sesión","pf.sessions":"Sesiones","pf.none":"Aún no hay perfiles. Crea el primero.",
+    "menu.title":"Menú de ejercicios","menu.greeting":"Perfil activo: {0}. Elige un ejercicio o gestiona los datos.",
+    "menu.sesB1":"Sesiones Bloque 1","menu.sesB2":"Sesiones Bloque 2","menu.last":"Última actividad","menu.time":"Tiempo total de uso",
+    "menu.b1t":"Bloque 1","menu.b1s":"Estímulos y gomets","menu.b1d":"Fija la mirada en la figura central y marca los estímulos periféricos (X o puntos) con clic o toque.",
+    "menu.b2t":"Bloque 2","menu.b2s":"Letras","menu.b2d":"Mantén la mirada en el punto central y localiza letras por la pantalla: búsqueda de letras o formación de palabras, con instrucción por voz.",
+    "menu.start":"Configurar y comenzar","menu.history":"Historial","menu.export":"Exportar perfil (JSON)","menu.import":"Importar copia",
+    "c.begin":"Comenzar sesión","c.seeHistory":"Ver historial y evolución","c.backMenu":"Volver al menú",
+    "tol.high":"Alta","tol.normal":"Normal","tol.low":"Baja","tol.vlow":"Muy baja",
+    "ex.pause":"Pausa","ex.finish":"Finalizar","ex.resume":"Reanudar","ex.pausedTitle":"Sesión en pausa",
+    "ex.pausedText":"Los tiempos están detenidos. Reanuda cuando estés preparado.",
+    "ex.rotateTitle":"Gira el dispositivo a horizontal","ex.rotateText":"Este ejercicio se realiza siempre en posición horizontal. Empezará automáticamente al girar el dispositivo.",
+    "ex.repeat":"Repetir","ex.restartWord":"Reiniciar palabra","ex.fixHint":"Mantén la mirada en el punto central",
+    "ex.markClick":"Marca con un clic donde percibas el estímulo","ex.markTap":"Toca donde percibas el estímulo",
+    "ex.bandB1":"No la veo · doble toque","ex.bandFind":"No la veo · siguiente · doble toque","ex.bandWord":"Saltar palabra · doble toque",
+    "ex.speakLetter":"Letra","ex.wordProg":"Palabra: {0} de {1} letras","ex.confirmExit":"¿Finalizar el ejercicio? Se perderá la sesión actual.",
+    "ex.confirmFinish":"¿Finalizar la sesión? Se conservarán los intentos ya realizados.","ex.wordRestarted":"Palabra reiniciada",
+    "r.titleB1":"Resultado de la sesión","r.titleB2":"Resultado de la sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de errores",
+    "r.this":"Esta sesión","r.acc":"Acumulado","r.save":"Guardar resultados","r.discard":"Descartar",
+    "r.confirmDiscard":"¿Descartar esta sesión sin guardarla?",
+    "st.prec":"Precisión","st.precFirst":"Precisión (1.ᵉʳ intento)","st.precLetters":"Precisión de letras","st.hits":"Aciertos",
+    "st.firstTry":"Aciertos a la primera","st.wordsDone":"Palabras completadas","st.notSeen":"No vistos","st.omissions":"Omisiones",
+    "st.incomplete":"Incompletas","st.errors":"Errores","st.meanErr":"Error medio (radios)","st.meanTime":"Tiempo medio",
+    "st.meanWord":"Tiempo medio/palabra","st.meanLetter":"Tiempo medio/letra","st.firstSel":"Hasta 1.ª selección",
+    "st.bias":"Sesgo del error","st.fieldLR":"Campo izq / der","st.fieldTB":"Campo sup / inf","st.duration":"Duración","st.audioReps":"Repeticiones de audio",
+    "bias.center":"centrado","bias.up":"arriba","bias.down":"abajo","bias.left":"izquierda","bias.right":"derecha",
+    "h.titleB1":"Historial y evolución","h.titleB2":"Historial y evolución — Bloque 2","h.evo":"Evolución del tiempo medio de respuesta",
+    "h.accAll":"Acumulado (todas)","h.lastSes":"Última sesión","h.sessions":"Sesiones","h.completed":"Completadas","h.interrupted":"Interrumpidas",
+    "h.precAvg":"Precisión media","h.best":"Mejor sesión","h.bestT":"Mejor tiempo medio","h.view":"Ver dashboard ▸","h.hits2":"aciertos",
+    "h.confirmDelSes":"¿Borrar esta sesión del historial? No se puede deshacer.","h.confirmClear":"¿Borrar todo el historial de sesiones?",
+    "h.csv":"Exportar CSV","h.json":"Exportar JSON","h.import":"Importar datos","h.clear":"Borrar historial","h.home":"Volver al inicio",
+    "h.letters":"Estadísticas por letra","h.thLetter":"Letra","h.thAsked":"Pedida","h.thHits":"Aciertos","h.thErrors":"Errores","h.thTime":"T. medio","h.thConf":"Confundida con",
+    "h.selectSes":"Sesiones (selecciona una para ver su dashboard)","h.noneMode":"Aún no hay sesiones de esta modalidad.","h.none":"Aún no hay sesiones guardadas.",
+    "d.back":"Volver al historial","d.exportSes":"Exportar sesión (JSON)","d.thisMap":"Esta sesión","d.accMap":"Acumulado hasta esta sesión",
+    "g.unsaved":"Hay un resultado sin guardar. ¿Salir y descartarlo?",
+    "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.state":"estado","b2.tries":"intentos",
+  };
+  const EN = {
+    "nav.menu":"Menu","nav.switch":"Switch user","nav.cancel":"Cancel","lang.search":"Search language…","lang.partial":"partial",
+    "pf.subtitle":"Select a profile to start, or create a new one. Each profile keeps its own sessions, results and settings.",
+    "pf.create":"Create new profile","pf.first":"First name","pf.last":"Last name(s)","pf.createBtn":"Create profile",
+    "pf.privacy":"Data is stored locally on this device. Make regular backups using the Export function.",
+    "pf.created":"Created","pf.lastSession":"Last session","pf.sessions":"Sessions","pf.none":"No profiles yet. Create the first one.",
+    "menu.title":"Exercise menu","menu.greeting":"Active profile: {0}. Choose an exercise or manage your data.",
+    "menu.sesB1":"Block 1 sessions","menu.sesB2":"Block 2 sessions","menu.last":"Last activity","menu.time":"Total usage time",
+    "menu.b1t":"Block 1","menu.b1s":"Stimuli and stickers","menu.b1d":"Fix your gaze on the central figure and mark the peripheral stimuli (X or dots) by click or tap.",
+    "menu.b2t":"Block 2","menu.b2s":"Letters","menu.b2d":"Keep your gaze on the central dot and locate letters on the screen: letter search or word building, with voice instructions.",
+    "menu.start":"Configure and start","menu.history":"History","menu.export":"Export profile (JSON)","menu.import":"Import backup",
+    "c.begin":"Start session","c.seeHistory":"View history and progress","c.backMenu":"Back to menu",
+    "tol.high":"High","tol.normal":"Normal","tol.low":"Low","tol.vlow":"Very low",
+    "ex.pause":"Pause","ex.finish":"Finish","ex.resume":"Resume","ex.pausedTitle":"Session paused",
+    "ex.pausedText":"Timers are stopped. Resume when you are ready.",
+    "ex.rotateTitle":"Rotate the device to landscape","ex.rotateText":"This exercise is always performed in landscape. It will start automatically when you rotate the device.",
+    "ex.repeat":"Repeat","ex.restartWord":"Restart word","ex.fixHint":"Keep your gaze on the central dot",
+    "ex.markClick":"Click where you perceive the stimulus","ex.markTap":"Tap where you perceive the stimulus",
+    "ex.bandB1":"I can't see it · double tap","ex.bandFind":"I can't see it · next · double tap","ex.bandWord":"Skip word · double tap",
+    "ex.speakLetter":"Letter","ex.wordProg":"Word: {0} of {1} letters","ex.confirmExit":"Finish the exercise? The current session will be lost.",
+    "ex.confirmFinish":"Finish the session? Completed attempts will be kept.","ex.wordRestarted":"Word restarted",
+    "r.titleB1":"Session results","r.titleB2":"Session results — Block 2","r.faultMap":"Error map","r.errMap":"Error map",
+    "r.this":"This session","r.acc":"Accumulated","r.save":"Save results","r.discard":"Discard",
+    "r.confirmDiscard":"Discard this session without saving?",
+    "st.prec":"Accuracy","st.precFirst":"Accuracy (1st try)","st.precLetters":"Letter accuracy","st.hits":"Hits",
+    "st.firstTry":"First-try hits","st.wordsDone":"Words completed","st.notSeen":"Not seen","st.omissions":"Omissions",
+    "st.incomplete":"Incomplete","st.errors":"Errors","st.meanErr":"Mean error (radii)","st.meanTime":"Mean time",
+    "st.meanWord":"Mean time/word","st.meanLetter":"Mean time/letter","st.firstSel":"To 1st selection",
+    "st.bias":"Error bias","st.fieldLR":"Left / right field","st.fieldTB":"Upper / lower field","st.duration":"Duration","st.audioReps":"Audio repeats",
+    "bias.center":"centered","bias.up":"up","bias.down":"down","bias.left":"left","bias.right":"right",
+    "h.titleB1":"History and progress","h.titleB2":"History and progress — Block 2","h.evo":"Mean response time over sessions",
+    "h.accAll":"Accumulated (all)","h.lastSes":"Last session","h.sessions":"Sessions","h.completed":"Completed","h.interrupted":"Interrupted",
+    "h.precAvg":"Average accuracy","h.best":"Best session","h.bestT":"Best mean time","h.view":"View dashboard ▸","h.hits2":"hits",
+    "h.confirmDelSes":"Delete this session from history? This cannot be undone.","h.confirmClear":"Delete the whole session history?",
+    "h.csv":"Export CSV","h.json":"Export JSON","h.import":"Import data","h.clear":"Clear history","h.home":"Back to start",
+    "h.letters":"Per-letter statistics","h.thLetter":"Letter","h.thAsked":"Asked","h.thHits":"Hits","h.thErrors":"Errors","h.thTime":"Mean t.","h.thConf":"Confused with",
+    "h.selectSes":"Sessions (select one to view its dashboard)","h.noneMode":"No sessions of this mode yet.","h.none":"No saved sessions yet.",
+    "d.back":"Back to history","d.exportSes":"Export session (JSON)","d.thisMap":"This session","d.accMap":"Accumulated up to this session",
+    "g.unsaved":"There is an unsaved result. Leave and discard it?",
+    "b2.modA":"Letter search","b2.modB":"Word building","b2.state":"status","b2.tries":"attempts",
+  };
+  const CA = {
+    "nav.menu":"Menú","nav.switch":"Canviar d'usuari","nav.cancel":"Cancel·lar","lang.search":"Cercar idioma…","lang.partial":"parcial",
+    "pf.subtitle":"Selecciona un perfil per començar, o crea'n un de nou. Cada perfil desa les seves sessions, resultats i configuracions.",
+    "pf.create":"Crear un perfil nou","pf.first":"Nom","pf.last":"Cognom(s)","pf.createBtn":"Crear perfil",
+    "pf.privacy":"Les dades es desen localment en aquest dispositiu. Fes còpies de seguretat periòdiques amb la funció Exportar.",
+    "pf.created":"Creat","pf.lastSession":"Última sessió","pf.sessions":"Sessions","pf.none":"Encara no hi ha perfils. Crea el primer.",
+    "menu.title":"Menú d'exercicis","menu.greeting":"Perfil actiu: {0}. Tria un exercici o gestiona les dades.",
+    "menu.sesB1":"Sessions Bloc 1","menu.sesB2":"Sessions Bloc 2","menu.last":"Última activitat","menu.time":"Temps total d'ús",
+    "menu.b1t":"Bloc 1","menu.b1s":"Estímuls i gomets","menu.b1d":"Fixa la mirada en la figura central i marca els estímuls perifèrics (X o punts) amb clic o toc.",
+    "menu.b2t":"Bloc 2","menu.b2s":"Lletres","menu.b2d":"Mantén la mirada en el punt central i localitza lletres per la pantalla: cerca de lletres o formació de paraules, amb instrucció per veu.",
+    "menu.start":"Configurar i començar","menu.history":"Historial","menu.export":"Exportar perfil (JSON)","menu.import":"Importar còpia",
+    "c.begin":"Començar la sessió","c.seeHistory":"Veure historial i evolució","c.backMenu":"Tornar al menú",
+    "tol.high":"Alta","tol.normal":"Normal","tol.low":"Baixa","tol.vlow":"Molt baixa",
+    "ex.pause":"Pausa","ex.finish":"Finalitzar","ex.resume":"Reprendre","ex.pausedTitle":"Sessió en pausa",
+    "ex.pausedText":"Els temps estan aturats. Reprèn quan estiguis preparat.",
+    "ex.rotateTitle":"Gira el dispositiu a horitzontal","ex.rotateText":"Aquest exercici es fa sempre en posició horitzontal. Començarà automàticament en girar el dispositiu.",
+    "ex.repeat":"Repetir","ex.restartWord":"Reiniciar paraula","ex.fixHint":"Mantén la mirada en el punt central",
+    "ex.markClick":"Marca amb un clic on percebis l'estímul","ex.markTap":"Toca on percebis l'estímul",
+    "ex.bandB1":"No la veig · doble toc","ex.bandFind":"No la veig · següent · doble toc","ex.bandWord":"Saltar paraula · doble toc",
+    "ex.speakLetter":"Lletra","ex.wordProg":"Paraula: {0} de {1} lletres","ex.confirmExit":"Finalitzar l'exercici? Es perdrà la sessió actual.",
+    "ex.confirmFinish":"Finalitzar la sessió? Es conservaran els intents realitzats.","ex.wordRestarted":"Paraula reiniciada",
+    "r.titleB1":"Resultat de la sessió","r.titleB2":"Resultat de la sessió — Bloc 2","r.faultMap":"Mapa d'errors","r.errMap":"Mapa d'errors",
+    "r.this":"Aquesta sessió","r.acc":"Acumulat","r.save":"Desar resultats","r.discard":"Descartar",
+    "r.confirmDiscard":"Descartar aquesta sessió sense desar-la?",
+    "st.prec":"Precisió","st.precFirst":"Precisió (1r intent)","st.precLetters":"Precisió de lletres","st.hits":"Encerts",
+    "st.firstTry":"Encerts a la primera","st.wordsDone":"Paraules completades","st.notSeen":"No vistos","st.omissions":"Omissions",
+    "st.incomplete":"Incompletes","st.errors":"Errors","st.meanErr":"Error mitjà (radis)","st.meanTime":"Temps mitjà",
+    "st.meanWord":"Temps mitjà/paraula","st.meanLetter":"Temps mitjà/lletra","st.firstSel":"Fins a 1a selecció",
+    "st.bias":"Biaix de l'error","st.fieldLR":"Camp esq / dret","st.fieldTB":"Camp sup / inf","st.duration":"Durada","st.audioReps":"Repeticions d'àudio",
+    "bias.center":"centrat","bias.up":"amunt","bias.down":"avall","bias.left":"esquerra","bias.right":"dreta",
+    "h.titleB1":"Historial i evolució","h.titleB2":"Historial i evolució — Bloc 2","h.evo":"Evolució del temps mitjà de resposta",
+    "h.accAll":"Acumulat (totes)","h.lastSes":"Última sessió","h.sessions":"Sessions","h.completed":"Completades","h.interrupted":"Interrompudes",
+    "h.precAvg":"Precisió mitjana","h.best":"Millor sessió","h.bestT":"Millor temps mitjà","h.view":"Veure dashboard ▸","h.hits2":"encerts",
+    "h.confirmDelSes":"Esborrar aquesta sessió de l'historial? No es pot desfer.","h.confirmClear":"Esborrar tot l'historial de sessions?",
+    "h.csv":"Exportar CSV","h.json":"Exportar JSON","h.import":"Importar dades","h.clear":"Esborrar historial","h.home":"Tornar a l'inici",
+    "h.letters":"Estadístiques per lletra","h.thLetter":"Lletra","h.thAsked":"Demanada","h.thHits":"Encerts","h.thErrors":"Errors","h.thTime":"T. mitjà","h.thConf":"Confosa amb",
+    "h.selectSes":"Sessions (selecciona'n una per veure el seu dashboard)","h.noneMode":"Encara no hi ha sessions d'aquesta modalitat.","h.none":"Encara no hi ha sessions desades.",
+    "d.back":"Tornar a l'historial","d.exportSes":"Exportar sessió (JSON)","d.thisMap":"Aquesta sessió","d.accMap":"Acumulat fins a aquesta sessió",
+    "g.unsaved":"Hi ha un resultat sense desar. Sortir i descartar-lo?",
+    "b2.modA":"Localitzar lletra","b2.modB":"Formar paraula","b2.state":"estat","b2.tries":"intents",
+  };
+  const VA = Object.assign({}, CA, {
+    "nav.switch":"Canviar d'usuari","ex.confirmExit":"Finalitzar l'exercici? Es perdrà la sessió actual.",
+    "h.home":"Tornar a l'inici","ex.resume":"Reprendre","bias.down":"avall","bias.up":"amunt",
+    "pf.subtitle":"Selecciona un perfil per a començar, o crea'n un de nou. Cada perfil guarda les seues sessions, resultats i configuracions.",
+    "pf.privacy":"Les dades es guarden localment en este dispositiu. Fes còpies de seguretat periòdiques amb la funció Exportar.",
+    "r.save":"Guardar resultats","h.none":"Encara no hi ha sessions guardades.",
+  });
+  const GL = Object.assign({}, ES, {
+    "nav.menu":"Menú","nav.switch":"Cambiar de usuario","nav.cancel":"Cancelar","lang.search":"Buscar idioma…",
+    "pf.subtitle":"Selecciona un perfil para comezar, ou crea un novo. Cada perfil garda as súas sesións, resultados e configuracións.",
+    "pf.create":"Crear un perfil novo","pf.first":"Nome","pf.last":"Apelido(s)","pf.createBtn":"Crear perfil",
+    "pf.privacy":"Os datos gárdanse localmente neste dispositivo. Fai copias de seguridade periódicas coa función Exportar.",
+    "pf.created":"Creado","pf.lastSession":"Última sesión","pf.sessions":"Sesións","pf.none":"Aínda non hai perfís. Crea o primeiro.",
+    "menu.title":"Menú de exercicios","menu.greeting":"Perfil activo: {0}. Escolle un exercicio ou xestiona os datos.",
+    "menu.sesB1":"Sesións Bloque 1","menu.sesB2":"Sesións Bloque 2","menu.last":"Última actividade","menu.time":"Tempo total de uso",
+    "menu.b1d":"Fixa a mirada na figura central e marca os estímulos periféricos (X ou puntos) con clic ou toque.",
+    "menu.b2s":"Letras","menu.b2d":"Mantén a mirada no punto central e localiza letras pola pantalla: procura de letras ou formación de palabras, con instrución por voz.",
+    "menu.start":"Configurar e comezar","menu.export":"Exportar perfil (JSON)","menu.import":"Importar copia",
+    "c.begin":"Comezar a sesión","c.seeHistory":"Ver historial e evolución","c.backMenu":"Volver ao menú",
+    "tol.high":"Alta","tol.low":"Baixa","tol.vlow":"Moi baixa",
+    "ex.finish":"Finalizar","ex.resume":"Retomar","ex.pausedTitle":"Sesión en pausa","ex.pausedText":"Os tempos están detidos. Retoma cando esteas preparado.",
+    "ex.rotateTitle":"Xira o dispositivo a horizontal","ex.rotateText":"Este exercicio faise sempre en posición horizontal. Comezará automaticamente ao xirar o dispositivo.",
+    "ex.restartWord":"Reiniciar palabra","ex.fixHint":"Mantén a mirada no punto central",
+    "ex.markClick":"Marca cun clic onde percibas o estímulo","ex.markTap":"Toca onde percibas o estímulo",
+    "ex.bandB1":"Non a vexo · dobre toque","ex.bandFind":"Non a vexo · seguinte · dobre toque","ex.bandWord":"Saltar palabra · dobre toque",
+    "ex.wordProg":"Palabra: {0} de {1} letras","ex.confirmExit":"Finalizar o exercicio? Perderase a sesión actual.",
+    "ex.confirmFinish":"Finalizar a sesión? Conservaranse os intentos realizados.","ex.wordRestarted":"Palabra reiniciada",
+    "r.titleB1":"Resultado da sesión","r.titleB2":"Resultado da sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de erros",
+    "r.this":"Esta sesión","r.acc":"Acumulado","r.save":"Gardar resultados","r.confirmDiscard":"Descartar esta sesión sen gardala?",
+    "st.hits":"Acertos","st.firstTry":"Acertos á primeira","st.wordsDone":"Palabras completadas","st.notSeen":"Non vistos","st.omissions":"Omisións",
+    "st.errors":"Erros","st.meanErr":"Erro medio (raios)","st.meanTime":"Tempo medio","st.meanWord":"Tempo medio/palabra","st.meanLetter":"Tempo medio/letra",
+    "st.bias":"Nesgo do erro","st.fieldLR":"Campo esq / der","st.fieldTB":"Campo sup / inf","st.duration":"Duración","st.audioReps":"Repeticións de audio",
+    "bias.center":"centrado","bias.up":"arriba","bias.down":"abaixo","bias.left":"esquerda","bias.right":"dereita",
+    "h.titleB1":"Historial e evolución","h.titleB2":"Historial e evolución — Bloque 2","h.evo":"Evolución do tempo medio de resposta",
+    "h.accAll":"Acumulado (todas)","h.lastSes":"Última sesión","h.sessions":"Sesións","h.completed":"Completadas","h.interrupted":"Interrompidas",
+    "h.precAvg":"Precisión media","h.best":"Mellor sesión","h.bestT":"Mellor tempo medio","h.hits2":"acertos",
+    "h.confirmDelSes":"Borrar esta sesión do historial? Non se pode desfacer.","h.confirmClear":"Borrar todo o historial de sesións?",
+    "h.import":"Importar datos","h.clear":"Borrar historial","h.home":"Volver ao inicio",
+    "h.letters":"Estatísticas por letra","h.thAsked":"Pedida","h.thHits":"Acertos","h.thErrors":"Erros","h.thTime":"T. medio","h.thConf":"Confundida con",
+    "h.selectSes":"Sesións (selecciona unha para ver o seu dashboard)","h.noneMode":"Aínda non hai sesións desta modalidade.","h.none":"Aínda non hai sesións gardadas.",
+    "d.back":"Volver ao historial","d.exportSes":"Exportar sesión (JSON)","d.thisMap":"Esta sesión","d.accMap":"Acumulado ata esta sesión",
+    "g.unsaved":"Hai un resultado sen gardar. Saír e descartalo?",
+    "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.state":"estado","b2.tries":"intentos",
+  });
+  const EU = Object.assign({}, EN, {
+    "nav.menu":"Menua","nav.switch":"Erabiltzailea aldatu","nav.cancel":"Utzi","lang.search":"Hizkuntza bilatu…",
+    "pf.subtitle":"Hautatu profil bat hasteko, edo sortu berri bat. Profil bakoitzak bere saioak, emaitzak eta ezarpenak gordetzen ditu.",
+    "pf.create":"Profil berria sortu","pf.first":"Izena","pf.last":"Abizena(k)","pf.createBtn":"Profila sortu",
+    "pf.privacy":"Datuak gailu honetan gordetzen dira lokalki. Egin babeskopiak aldian-aldian Esportatu funtzioarekin.",
+    "pf.created":"Sortua","pf.lastSession":"Azken saioa","pf.sessions":"Saioak","pf.none":"Oraindik ez dago profilik. Sortu lehena.",
+    "menu.title":"Ariketen menua","menu.greeting":"Profil aktiboa: {0}. Aukeratu ariketa bat edo kudeatu datuak.",
+    "menu.sesB1":"1. blokeko saioak","menu.sesB2":"2. blokeko saioak","menu.last":"Azken jarduera","menu.time":"Erabilera-denbora osoa",
+    "menu.b1t":"1. blokea","menu.b1s":"Estimuluak eta gometsak","menu.b1d":"Finkatu begirada erdiko irudian eta markatu estimulu periferikoak (X edo puntuak) klik edo ukituz.",
+    "menu.b2t":"2. blokea","menu.b2s":"Letrak","menu.b2d":"Mantendu begirada erdiko puntuan eta aurkitu letrak pantailan: letra-bilaketa edo hitzak osatzea, ahozko jarraibideekin.",
+    "menu.start":"Konfiguratu eta hasi","menu.history":"Historia","menu.export":"Profila esportatu (JSON)","menu.import":"Kopia inportatu",
+    "c.begin":"Saioa hasi","c.seeHistory":"Historia eta bilakaera ikusi","c.backMenu":"Menura itzuli",
+    "tol.high":"Altua","tol.normal":"Arrunta","tol.low":"Baxua","tol.vlow":"Oso baxua",
+    "ex.pause":"Pausa","ex.finish":"Amaitu","ex.resume":"Jarraitu","ex.pausedTitle":"Saioa pausan",
+    "ex.pausedText":"Denborak geldirik daude. Jarraitu prest zaudenean.",
+    "ex.rotateTitle":"Biratu gailua horizontalera","ex.rotateText":"Ariketa hau beti horizontalean egiten da. Automatikoki hasiko da gailua biratzean.",
+    "ex.repeat":"Errepikatu","ex.restartWord":"Hitza berrabiarazi","ex.fixHint":"Mantendu begirada erdiko puntuan",
+    "ex.markClick":"Klikatu estimulua hautematen duzun tokian","ex.markTap":"Ukitu estimulua hautematen duzun tokian",
+    "ex.bandB1":"Ez dut ikusten · ukitu bikoitza","ex.bandFind":"Ez dut ikusten · hurrengoa · ukitu bikoitza","ex.bandWord":"Hitza saltatu · ukitu bikoitza",
+    "ex.speakLetter":"Letra","ex.wordProg":"Hitza: {0} / {1} letra","ex.confirmExit":"Ariketa amaitu? Uneko saioa galduko da.",
+    "ex.confirmFinish":"Saioa amaitu? Egindako saiakerak gordeko dira.","ex.wordRestarted":"Hitza berrabiarazita",
+    "r.titleB1":"Saioaren emaitza","r.titleB2":"Saioaren emaitza — 2. blokea","r.faultMap":"Akatsen mapa","r.errMap":"Erroreen mapa",
+    "r.this":"Saio hau","r.acc":"Metatua","r.save":"Emaitzak gorde","r.discard":"Baztertu","r.confirmDiscard":"Saio hau gorde gabe baztertu?",
+    "st.prec":"Zehaztasuna","st.hits":"Asmatuak","st.notSeen":"Ikusi gabeak","st.omissions":"Omisioak","st.errors":"Erroreak",
+    "st.meanTime":"Batez besteko denbora","st.duration":"Iraupena","st.fieldLR":"Ezker / eskuin eremua","st.fieldTB":"Goiko / beheko eremua",
+    "bias.center":"zentratua","bias.up":"gora","bias.down":"behera","bias.left":"ezkerra","bias.right":"eskuina",
+    "h.titleB1":"Historia eta bilakaera","h.titleB2":"Historia eta bilakaera — 2. blokea","h.evo":"Erantzun-denboraren bilakaera",
+    "h.sessions":"Saioak","h.completed":"Osatuak","h.interrupted":"Etenak","h.precAvg":"Batez besteko zehaztasuna",
+    "h.confirmDelSes":"Saio hau historiatik ezabatu? Ezin da desegin.","h.confirmClear":"Saioen historia osoa ezabatu?",
+    "h.clear":"Historia ezabatu","h.home":"Hasierara itzuli","h.letters":"Letra bakoitzeko estatistikak",
+    "d.back":"Historiara itzuli","d.exportSes":"Saioa esportatu (JSON)","d.thisMap":"Saio hau","d.accMap":"Saio honetara arte metatua",
+    "g.unsaved":"Gorde gabeko emaitza bat dago. Irten eta baztertu?",
+    "b2.modA":"Letra aurkitu","b2.modB":"Hitza osatu","b2.state":"egoera","b2.tries":"saiakerak",
+  });
+  const PT = Object.assign({}, ES, {
+    "nav.menu":"Menu","nav.switch":"Mudar de utilizador","nav.cancel":"Cancelar","lang.search":"Procurar idioma…",
+    "pf.subtitle":"Seleciona um perfil para começar, ou cria um novo. Cada perfil guarda as suas sessões, resultados e configurações.",
+    "pf.create":"Criar novo perfil","pf.first":"Nome","pf.last":"Apelido(s)","pf.createBtn":"Criar perfil",
+    "pf.privacy":"Os dados são guardados localmente neste dispositivo. Faz cópias de segurança periódicas com a função Exportar.",
+    "pf.created":"Criado","pf.lastSession":"Última sessão","pf.sessions":"Sessões","pf.none":"Ainda não há perfis. Cria o primeiro.",
+    "menu.title":"Menu de exercícios","menu.greeting":"Perfil ativo: {0}. Escolhe um exercício ou faz a gestão dos dados.",
+    "menu.sesB1":"Sessões Bloco 1","menu.sesB2":"Sessões Bloco 2","menu.last":"Última atividade","menu.time":"Tempo total de uso",
+    "menu.b1t":"Bloco 1","menu.b1s":"Estímulos e autocolantes","menu.b1d":"Fixa o olhar na figura central e marca os estímulos periféricos (X ou pontos) com clique ou toque.",
+    "menu.b2t":"Bloco 2","menu.b2s":"Letras","menu.b2d":"Mantém o olhar no ponto central e localiza letras no ecrã: procura de letras ou formação de palavras, com instrução por voz.",
+    "menu.start":"Configurar e começar","menu.history":"Histórico","menu.export":"Exportar perfil (JSON)","menu.import":"Importar cópia",
+    "c.begin":"Começar sessão","c.seeHistory":"Ver histórico e evolução","c.backMenu":"Voltar ao menu",
+    "tol.high":"Alta","tol.normal":"Normal","tol.low":"Baixa","tol.vlow":"Muito baixa",
+    "ex.finish":"Terminar","ex.resume":"Retomar","ex.pausedTitle":"Sessão em pausa","ex.pausedText":"Os tempos estão parados. Retoma quando estiveres pronto.",
+    "ex.rotateTitle":"Roda o dispositivo para horizontal","ex.rotateText":"Este exercício é sempre realizado na horizontal. Começará automaticamente ao rodar o dispositivo.",
+    "ex.repeat":"Repetir","ex.restartWord":"Reiniciar palavra","ex.fixHint":"Mantém o olhar no ponto central",
+    "ex.markClick":"Clica onde percebas o estímulo","ex.markTap":"Toca onde percebas o estímulo",
+    "ex.bandB1":"Não a vejo · duplo toque","ex.bandFind":"Não a vejo · seguinte · duplo toque","ex.bandWord":"Saltar palavra · duplo toque",
+    "ex.speakLetter":"Letra","ex.wordProg":"Palavra: {0} de {1} letras","ex.confirmExit":"Terminar o exercício? A sessão atual será perdida.",
+    "ex.confirmFinish":"Terminar a sessão? As tentativas realizadas serão guardadas.","ex.wordRestarted":"Palavra reiniciada",
+    "r.titleB1":"Resultado da sessão","r.titleB2":"Resultado da sessão — Bloco 2","r.faultMap":"Mapa de falhas","r.errMap":"Mapa de erros",
+    "r.this":"Esta sessão","r.acc":"Acumulado","r.save":"Guardar resultados","r.discard":"Descartar","r.confirmDiscard":"Descartar esta sessão sem guardar?",
+    "st.prec":"Precisão","st.hits":"Acertos","st.firstTry":"Acertos à primeira","st.wordsDone":"Palavras completadas","st.notSeen":"Não vistos",
+    "st.omissions":"Omissões","st.incomplete":"Incompletas","st.errors":"Erros","st.meanErr":"Erro médio (raios)","st.meanTime":"Tempo médio",
+    "st.meanWord":"Tempo médio/palavra","st.meanLetter":"Tempo médio/letra","st.firstSel":"Até 1.ª seleção",
+    "st.bias":"Viés do erro","st.fieldLR":"Campo esq / dir","st.fieldTB":"Campo sup / inf","st.duration":"Duração","st.audioReps":"Repetições de áudio",
+    "bias.center":"centrado","bias.up":"cima","bias.down":"baixo","bias.left":"esquerda","bias.right":"direita",
+    "h.titleB1":"Histórico e evolução","h.titleB2":"Histórico e evolução — Bloco 2","h.evo":"Evolução do tempo médio de resposta",
+    "h.accAll":"Acumulado (todas)","h.lastSes":"Última sessão","h.sessions":"Sessões","h.completed":"Completadas","h.interrupted":"Interrompidas",
+    "h.precAvg":"Precisão média","h.best":"Melhor sessão","h.bestT":"Melhor tempo médio","h.hits2":"acertos",
+    "h.confirmDelSes":"Apagar esta sessão do histórico? Não pode ser desfeito.","h.confirmClear":"Apagar todo o histórico de sessões?",
+    "h.import":"Importar dados","h.clear":"Apagar histórico","h.home":"Voltar ao início",
+    "h.letters":"Estatísticas por letra","h.thAsked":"Pedida","h.thHits":"Acertos","h.thErrors":"Erros","h.thTime":"T. médio","h.thConf":"Confundida com",
+    "h.selectSes":"Sessões (seleciona uma para ver o seu dashboard)","h.noneMode":"Ainda não há sessões desta modalidade.","h.none":"Ainda não há sessões guardadas.",
+    "d.back":"Voltar ao histórico","d.exportSes":"Exportar sessão (JSON)","d.thisMap":"Esta sessão","d.accMap":"Acumulado até esta sessão",
+    "g.unsaved":"Há um resultado por guardar. Sair e descartá-lo?",
+    "b2.modA":"Localizar letra","b2.modB":"Formar palavra","b2.state":"estado","b2.tries":"tentativas",
+  });
+  const IT = Object.assign({}, EN, {
+    "nav.menu":"Menu","nav.switch":"Cambia utente","nav.cancel":"Annulla","lang.search":"Cerca lingua…",
+    "pf.subtitle":"Seleziona un profilo per iniziare, o creane uno nuovo. Ogni profilo conserva le proprie sessioni, risultati e impostazioni.",
+    "pf.create":"Crea nuovo profilo","pf.first":"Nome","pf.last":"Cognome/i","pf.createBtn":"Crea profilo",
+    "pf.privacy":"I dati sono salvati localmente su questo dispositivo. Esegui backup periodici con la funzione Esporta.",
+    "pf.created":"Creato","pf.lastSession":"Ultima sessione","pf.sessions":"Sessioni","pf.none":"Non ci sono ancora profili. Crea il primo.",
+    "menu.title":"Menu degli esercizi","menu.greeting":"Profilo attivo: {0}. Scegli un esercizio o gestisci i dati.",
+    "menu.sesB1":"Sessioni Blocco 1","menu.sesB2":"Sessioni Blocco 2","menu.last":"Ultima attività","menu.time":"Tempo totale di utilizzo",
+    "menu.b1t":"Blocco 1","menu.b1s":"Stimoli e bollini","menu.b1d":"Fissa lo sguardo sulla figura centrale e marca gli stimoli periferici (X o punti) con clic o tocco.",
+    "menu.b2t":"Blocco 2","menu.b2s":"Lettere","menu.b2d":"Mantieni lo sguardo sul punto centrale e individua le lettere sullo schermo: ricerca di lettere o formazione di parole, con istruzioni vocali.",
+    "menu.start":"Configura e inizia","menu.history":"Cronologia","menu.export":"Esporta profilo (JSON)","menu.import":"Importa copia",
+    "c.begin":"Inizia sessione","c.seeHistory":"Vedi cronologia ed evoluzione","c.backMenu":"Torna al menu",
+    "tol.high":"Alta","tol.normal":"Normale","tol.low":"Bassa","tol.vlow":"Molto bassa",
+    "ex.pause":"Pausa","ex.finish":"Termina","ex.resume":"Riprendi","ex.pausedTitle":"Sessione in pausa",
+    "ex.pausedText":"I tempi sono fermi. Riprendi quando sei pronto.",
+    "ex.rotateTitle":"Ruota il dispositivo in orizzontale","ex.rotateText":"Questo esercizio si svolge sempre in orizzontale. Inizierà automaticamente ruotando il dispositivo.",
+    "ex.repeat":"Ripeti","ex.restartWord":"Ricomincia parola","ex.fixHint":"Mantieni lo sguardo sul punto centrale",
+    "ex.markClick":"Clicca dove percepisci lo stimolo","ex.markTap":"Tocca dove percepisci lo stimolo",
+    "ex.bandB1":"Non la vedo · doppio tocco","ex.bandFind":"Non la vedo · successiva · doppio tocco","ex.bandWord":"Salta parola · doppio tocco",
+    "ex.speakLetter":"Lettera","ex.wordProg":"Parola: {0} di {1} lettere","ex.confirmExit":"Terminare l'esercizio? La sessione attuale andrà persa.",
+    "ex.confirmFinish":"Terminare la sessione? I tentativi effettuati saranno conservati.","ex.wordRestarted":"Parola ricominciata",
+    "r.titleB1":"Risultato della sessione","r.titleB2":"Risultato della sessione — Blocco 2","r.faultMap":"Mappa degli errori","r.errMap":"Mappa degli errori",
+    "r.this":"Questa sessione","r.acc":"Accumulato","r.save":"Salva risultati","r.discard":"Scarta","r.confirmDiscard":"Scartare questa sessione senza salvarla?",
+    "st.prec":"Precisione","st.hits":"Corretti","st.notSeen":"Non visti","st.omissions":"Omissioni","st.errors":"Errori",
+    "st.meanTime":"Tempo medio","st.duration":"Durata","st.fieldLR":"Campo sin / des","st.fieldTB":"Campo sup / inf","st.bias":"Bias dell'errore",
+    "bias.center":"centrato","bias.up":"su","bias.down":"giù","bias.left":"sinistra","bias.right":"destra",
+    "h.titleB1":"Cronologia ed evoluzione","h.titleB2":"Cronologia ed evoluzione — Blocco 2","h.evo":"Evoluzione del tempo medio di risposta",
+    "h.sessions":"Sessioni","h.completed":"Completate","h.interrupted":"Interrotte","h.precAvg":"Precisione media","h.hits2":"corretti",
+    "h.confirmDelSes":"Eliminare questa sessione dalla cronologia? Non si può annullare.","h.confirmClear":"Eliminare tutta la cronologia?",
+    "h.clear":"Cancella cronologia","h.home":"Torna all'inizio","h.letters":"Statistiche per lettera",
+    "d.back":"Torna alla cronologia","d.exportSes":"Esporta sessione (JSON)","d.thisMap":"Questa sessione","d.accMap":"Accumulato fino a questa sessione",
+    "g.unsaved":"C'è un risultato non salvato. Uscire e scartarlo?",
+    "b2.modA":"Trova la lettera","b2.modB":"Forma la parola","b2.state":"stato","b2.tries":"tentativi",
+  });
+  const FR = Object.assign({}, EN, {
+    "nav.menu":"Menu","nav.switch":"Changer d'utilisateur","nav.cancel":"Annuler","lang.search":"Rechercher une langue…",
+    "pf.subtitle":"Sélectionne un profil pour commencer, ou crées-en un nouveau. Chaque profil conserve ses sessions, résultats et réglages.",
+    "pf.create":"Créer un nouveau profil","pf.first":"Prénom","pf.last":"Nom(s)","pf.createBtn":"Créer le profil",
+    "pf.privacy":"Les données sont stockées localement sur cet appareil. Effectue des sauvegardes régulières avec la fonction Exporter.",
+    "pf.created":"Créé","pf.lastSession":"Dernière session","pf.sessions":"Sessions","pf.none":"Aucun profil pour l'instant. Crée le premier.",
+    "menu.title":"Menu des exercices","menu.greeting":"Profil actif : {0}. Choisis un exercice ou gère les données.",
+    "menu.sesB1":"Sessions Bloc 1","menu.sesB2":"Sessions Bloc 2","menu.last":"Dernière activité","menu.time":"Temps total d'utilisation",
+    "menu.b1t":"Bloc 1","menu.b1s":"Stimuli et gommettes","menu.b1d":"Fixe le regard sur la figure centrale et marque les stimuli périphériques (X ou points) par clic ou toucher.",
+    "menu.b2t":"Bloc 2","menu.b2s":"Lettres","menu.b2d":"Garde le regard sur le point central et repère les lettres à l'écran : recherche de lettres ou formation de mots, avec consigne vocale.",
+    "menu.start":"Configurer et commencer","menu.history":"Historique","menu.export":"Exporter le profil (JSON)","menu.import":"Importer une copie",
+    "c.begin":"Commencer la session","c.seeHistory":"Voir l'historique et l'évolution","c.backMenu":"Retour au menu",
+    "tol.high":"Élevée","tol.normal":"Normale","tol.low":"Faible","tol.vlow":"Très faible",
+    "ex.pause":"Pause","ex.finish":"Terminer","ex.resume":"Reprendre","ex.pausedTitle":"Session en pause",
+    "ex.pausedText":"Les temps sont arrêtés. Reprends quand tu es prêt.",
+    "ex.rotateTitle":"Tourne l'appareil à l'horizontale","ex.rotateText":"Cet exercice se fait toujours à l'horizontale. Il démarrera automatiquement en tournant l'appareil.",
+    "ex.repeat":"Répéter","ex.restartWord":"Recommencer le mot","ex.fixHint":"Garde le regard sur le point central",
+    "ex.markClick":"Clique là où tu perçois le stimulus","ex.markTap":"Touche là où tu perçois le stimulus",
+    "ex.bandB1":"Je ne la vois pas · double touche","ex.bandFind":"Je ne la vois pas · suivante · double touche","ex.bandWord":"Passer le mot · double touche",
+    "ex.speakLetter":"Lettre","ex.wordProg":"Mot : {0} sur {1} lettres","ex.confirmExit":"Terminer l'exercice ? La session actuelle sera perdue.",
+    "ex.confirmFinish":"Terminer la session ? Les essais réalisés seront conservés.","ex.wordRestarted":"Mot recommencé",
+    "r.titleB1":"Résultat de la session","r.titleB2":"Résultat de la session — Bloc 2","r.faultMap":"Carte des erreurs","r.errMap":"Carte des erreurs",
+    "r.this":"Cette session","r.acc":"Cumulé","r.save":"Enregistrer les résultats","r.discard":"Abandonner","r.confirmDiscard":"Abandonner cette session sans l'enregistrer ?",
+    "st.prec":"Précision","st.hits":"Réussites","st.notSeen":"Non vus","st.omissions":"Omissions","st.errors":"Erreurs",
+    "st.meanTime":"Temps moyen","st.duration":"Durée","st.fieldLR":"Champ gauche / droit","st.fieldTB":"Champ sup / inf","st.bias":"Biais de l'erreur",
+    "bias.center":"centré","bias.up":"haut","bias.down":"bas","bias.left":"gauche","bias.right":"droite",
+    "h.titleB1":"Historique et évolution","h.titleB2":"Historique et évolution — Bloc 2","h.evo":"Évolution du temps moyen de réponse",
+    "h.sessions":"Sessions","h.completed":"Terminées","h.interrupted":"Interrompues","h.precAvg":"Précision moyenne","h.hits2":"réussites",
+    "h.confirmDelSes":"Supprimer cette session de l'historique ? Irréversible.","h.confirmClear":"Supprimer tout l'historique des sessions ?",
+    "h.clear":"Effacer l'historique","h.home":"Retour à l'accueil","h.letters":"Statistiques par lettre",
+    "d.back":"Retour à l'historique","d.exportSes":"Exporter la session (JSON)","d.thisMap":"Cette session","d.accMap":"Cumulé jusqu'à cette session",
+    "g.unsaved":"Un résultat n'est pas enregistré. Quitter et l'abandonner ?",
+    "b2.modA":"Trouver la lettre","b2.modB":"Former le mot","b2.state":"état","b2.tries":"essais",
+  });
+  const DE = Object.assign({}, EN, {
+    "nav.menu":"Menü","nav.switch":"Benutzer wechseln","nav.cancel":"Abbrechen","lang.search":"Sprache suchen…",
+    "pf.subtitle":"Wähle ein Profil zum Starten oder lege ein neues an. Jedes Profil speichert eigene Sitzungen, Ergebnisse und Einstellungen.",
+    "pf.create":"Neues Profil anlegen","pf.first":"Vorname","pf.last":"Nachname(n)","pf.createBtn":"Profil anlegen",
+    "pf.privacy":"Die Daten werden lokal auf diesem Gerät gespeichert. Erstelle regelmäßig Sicherungen über die Export-Funktion.",
+    "pf.created":"Erstellt","pf.lastSession":"Letzte Sitzung","pf.sessions":"Sitzungen","pf.none":"Noch keine Profile. Lege das erste an.",
+    "menu.title":"Übungsmenü","menu.greeting":"Aktives Profil: {0}. Wähle eine Übung oder verwalte die Daten.",
+    "menu.sesB1":"Sitzungen Block 1","menu.sesB2":"Sitzungen Block 2","menu.last":"Letzte Aktivität","menu.time":"Gesamtnutzungszeit",
+    "menu.b1t":"Block 1","menu.b1s":"Reize und Klebepunkte","menu.b1d":"Fixiere die zentrale Figur und markiere die peripheren Reize (X oder Punkte) per Klick oder Tippen.",
+    "menu.b2t":"Block 2","menu.b2s":"Buchstaben","menu.b2d":"Halte den Blick auf dem zentralen Punkt und finde Buchstaben auf dem Bildschirm: Buchstabensuche oder Wortbildung, mit Sprachansage.",
+    "menu.start":"Konfigurieren und starten","menu.history":"Verlauf","menu.export":"Profil exportieren (JSON)","menu.import":"Sicherung importieren",
+    "c.begin":"Sitzung starten","c.seeHistory":"Verlauf und Entwicklung ansehen","c.backMenu":"Zurück zum Menü",
+    "tol.high":"Hoch","tol.normal":"Normal","tol.low":"Niedrig","tol.vlow":"Sehr niedrig",
+    "ex.pause":"Pause","ex.finish":"Beenden","ex.resume":"Fortsetzen","ex.pausedTitle":"Sitzung pausiert",
+    "ex.pausedText":"Die Zeiten sind angehalten. Setze fort, wenn du bereit bist.",
+    "ex.rotateTitle":"Drehe das Gerät ins Querformat","ex.rotateText":"Diese Übung wird immer im Querformat durchgeführt. Sie startet automatisch beim Drehen des Geräts.",
+    "ex.repeat":"Wiederholen","ex.restartWord":"Wort neu beginnen","ex.fixHint":"Halte den Blick auf dem zentralen Punkt",
+    "ex.markClick":"Klicke dorthin, wo du den Reiz wahrnimmst","ex.markTap":"Tippe dorthin, wo du den Reiz wahrnimmst",
+    "ex.bandB1":"Ich sehe es nicht · Doppeltipp","ex.bandFind":"Ich sehe ihn nicht · weiter · Doppeltipp","ex.bandWord":"Wort überspringen · Doppeltipp",
+    "ex.speakLetter":"Buchstabe","ex.wordProg":"Wort: {0} von {1} Buchstaben","ex.confirmExit":"Übung beenden? Die aktuelle Sitzung geht verloren.",
+    "ex.confirmFinish":"Sitzung beenden? Die durchgeführten Versuche bleiben erhalten.","ex.wordRestarted":"Wort neu begonnen",
+    "r.titleB1":"Sitzungsergebnis","r.titleB2":"Sitzungsergebnis — Block 2","r.faultMap":"Fehlerkarte","r.errMap":"Fehlerkarte",
+    "r.this":"Diese Sitzung","r.acc":"Kumuliert","r.save":"Ergebnisse speichern","r.discard":"Verwerfen","r.confirmDiscard":"Diese Sitzung ohne Speichern verwerfen?",
+    "st.prec":"Genauigkeit","st.hits":"Treffer","st.notSeen":"Nicht gesehen","st.omissions":"Auslassungen","st.errors":"Fehler",
+    "st.meanTime":"Mittlere Zeit","st.duration":"Dauer","st.fieldLR":"Linkes / rechtes Feld","st.fieldTB":"Oberes / unteres Feld","st.bias":"Fehlertendenz",
+    "bias.center":"zentriert","bias.up":"oben","bias.down":"unten","bias.left":"links","bias.right":"rechts",
+    "h.titleB1":"Verlauf und Entwicklung","h.titleB2":"Verlauf und Entwicklung — Block 2","h.evo":"Entwicklung der mittleren Reaktionszeit",
+    "h.sessions":"Sitzungen","h.completed":"Abgeschlossen","h.interrupted":"Unterbrochen","h.precAvg":"Mittlere Genauigkeit","h.hits2":"Treffer",
+    "h.confirmDelSes":"Diese Sitzung aus dem Verlauf löschen? Nicht rückgängig zu machen.","h.confirmClear":"Den gesamten Sitzungsverlauf löschen?",
+    "h.clear":"Verlauf löschen","h.home":"Zurück zum Start","h.letters":"Statistik pro Buchstabe",
+    "d.back":"Zurück zum Verlauf","d.exportSes":"Sitzung exportieren (JSON)","d.thisMap":"Diese Sitzung","d.accMap":"Kumuliert bis zu dieser Sitzung",
+    "g.unsaved":"Es gibt ein ungespeichertes Ergebnis. Verlassen und verwerfen?",
+    "b2.modA":"Buchstaben finden","b2.modB":"Wort bilden","b2.state":"Status","b2.tries":"Versuche",
+  });
+  const RU = Object.assign({}, EN, {
+    "nav.menu":"Меню","nav.switch":"Сменить пользователя","nav.cancel":"Отмена","lang.search":"Поиск языка…",
+    "pf.subtitle":"Выберите профиль, чтобы начать, или создайте новый. Каждый профиль хранит свои сеансы, результаты и настройки.",
+    "pf.create":"Создать новый профиль","pf.first":"Имя","pf.last":"Фамилия","pf.createBtn":"Создать профиль",
+    "pf.privacy":"Данные хранятся локально на этом устройстве. Регулярно делайте резервные копии с помощью функции «Экспорт».",
+    "pf.created":"Создан","pf.lastSession":"Последний сеанс","pf.sessions":"Сеансы","pf.none":"Профилей пока нет. Создайте первый.",
+    "menu.title":"Меню упражнений","menu.greeting":"Активный профиль: {0}. Выберите упражнение или управляйте данными.",
+    "menu.sesB1":"Сеансы: блок 1","menu.sesB2":"Сеансы: блок 2","menu.last":"Последняя активность","menu.time":"Общее время",
+    "menu.b1t":"Блок 1","menu.b1s":"Стимулы и наклейки","menu.b1d":"Зафиксируйте взгляд на центральной фигуре и отмечайте периферические стимулы (X или точки) щелчком или касанием.",
+    "menu.b2t":"Блок 2","menu.b2s":"Буквы","menu.b2d":"Держите взгляд на центральной точке и находите буквы на экране: поиск букв или составление слов, с голосовой инструкцией.",
+    "menu.start":"Настроить и начать","menu.history":"История","menu.export":"Экспорт профиля (JSON)","menu.import":"Импорт копии",
+    "c.begin":"Начать сеанс","c.seeHistory":"История и динамика","c.backMenu":"Назад в меню",
+    "tol.high":"Высокая","tol.normal":"Обычная","tol.low":"Низкая","tol.vlow":"Очень низкая",
+    "ex.pause":"Пауза","ex.finish":"Завершить","ex.resume":"Продолжить","ex.pausedTitle":"Сеанс на паузе",
+    "ex.pausedText":"Время остановлено. Продолжите, когда будете готовы.",
+    "ex.rotateTitle":"Поверните устройство горизонтально","ex.rotateText":"Это упражнение всегда выполняется в горизонтальном положении. Оно начнётся автоматически после поворота.",
+    "ex.repeat":"Повторить","ex.restartWord":"Начать слово заново","ex.fixHint":"Держите взгляд на центральной точке",
+    "ex.markClick":"Щёлкните там, где видите стимул","ex.markTap":"Коснитесь там, где видите стимул",
+    "ex.bandB1":"Не вижу · двойное касание","ex.bandFind":"Не вижу · следующая · двойное касание","ex.bandWord":"Пропустить слово · двойное касание",
+    "ex.speakLetter":"Буква","ex.wordProg":"Слово: {0} из {1} букв","ex.confirmExit":"Завершить упражнение? Текущий сеанс будет потерян.",
+    "ex.confirmFinish":"Завершить сеанс? Выполненные попытки будут сохранены.","ex.wordRestarted":"Слово начато заново",
+    "r.titleB1":"Результат сеанса","r.titleB2":"Результат сеанса — блок 2","r.faultMap":"Карта ошибок","r.errMap":"Карта ошибок",
+    "r.this":"Этот сеанс","r.acc":"Суммарно","r.save":"Сохранить результаты","r.discard":"Отменить","r.confirmDiscard":"Отменить сеанс без сохранения?",
+    "st.prec":"Точность","st.hits":"Попадания","st.notSeen":"Не увидены","st.omissions":"Пропуски","st.errors":"Ошибки",
+    "st.meanTime":"Среднее время","st.duration":"Длительность","st.fieldLR":"Левое / правое поле","st.fieldTB":"Верхнее / нижнее поле","st.bias":"Смещение ошибки",
+    "bias.center":"по центру","bias.up":"вверх","bias.down":"вниз","bias.left":"влево","bias.right":"вправо",
+    "h.titleB1":"История и динамика","h.titleB2":"История и динамика — блок 2","h.evo":"Динамика среднего времени ответа",
+    "h.sessions":"Сеансы","h.completed":"Завершённые","h.interrupted":"Прерванные","h.precAvg":"Средняя точность","h.hits2":"попаданий",
+    "h.confirmDelSes":"Удалить этот сеанс из истории? Действие необратимо.","h.confirmClear":"Удалить всю историю сеансов?",
+    "h.clear":"Очистить историю","h.home":"На главную","h.letters":"Статистика по буквам",
+    "d.back":"Назад к истории","d.exportSes":"Экспорт сеанса (JSON)","d.thisMap":"Этот сеанс","d.accMap":"Суммарно до этого сеанса",
+    "g.unsaved":"Есть несохранённый результат. Выйти и отменить его?",
+    "b2.modA":"Найти букву","b2.modB":"Составить слово","b2.state":"статус","b2.tries":"попыток",
+  });
+  const I18N = { es: ES, en: EN, ca: CA, va: VA, gl: GL, eu: EU, pt: PT, it: IT, fr: FR, de: DE, ru: RU };
+  const FULL_LANGS = Object.keys(I18N);
+
+  let curLangCode = "es";
+  function langDef() { return LANGS.find((l) => l[0] === curLangCode) || LANGS[0]; }
+  function t(key) {
+    const d = I18N[curLangCode] || EN;
+    let s = d[key] || EN[key] || ES[key] || key;
+    for (let i = 1; i < arguments.length; i++) s = s.replace("{" + (i - 1) + "}", arguments[i]);
+    return s;
+  }
+
+  function flagHtml(l) {
+    return l[2].indexOf("data:") === 0
+      ? '<span class="flag"><img alt="" src="' + l[2] + '"></span>'
+      : '<span class="flag">' + l[2] + "</span>";
+  }
+
+  function renderLangList(filter) {
+    const list = $("#lang-list");
+    const f = (filter || "").toLowerCase();
+    list.innerHTML = "";
+    LANGS.forEach((l) => {
+      if (f && l[1].toLowerCase().indexOf(f) < 0 && l[0].indexOf(f) < 0) return;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "lang-item" + (l[0] === curLangCode ? " sel" : "");
+      b.innerHTML = flagHtml(l) + "<span>" + l[1] + "</span>" +
+        (FULL_LANGS.indexOf(l[0]) < 0 ? '<span class="li-partial">EN · ' + t("lang.partial") + "</span>" : "");
+      b.addEventListener("click", () => { setLang(l[0]); closeLangPanel(); });
+      list.appendChild(b);
+    });
+  }
+  function closeLangPanel() { $("#lang-panel").classList.add("hidden"); }
+
+  // Traducción del DOM estático: elementos con data-i18n + mapa de selectores
+  // (reemplaza solo el PRIMER nodo de texto para no tocar <output>/<kbd>).
+  function setFirstText(el, txt) {
+    if (!el) return;
+    for (let n = el.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3 && n.textContent.trim()) { n.textContent = txt + (n.textContent.slice(-1) === " " ? " " : ""); return; }
+    }
+    el.insertBefore(document.createTextNode(txt), el.firstChild);
+  }
+  // [selector, clave] — textos estáticos sin data-i18n (formularios, títulos…)
+  const DOM_MAP = [
+    ["#screen-profiles .subtitle", "pf.subtitle"],
+    ["#screen-profiles legend", "pf.create"],
+    ["#profile-form .field:nth-of-type(1)>span", "pf.first"],
+    ["#profile-form .field:nth-of-type(2)>span", "pf.last"],
+    ["#profile-form button.primary", "pf.createBtn"],
+    ["#screen-profiles .hint-text", "pf.privacy"],
+    ["#screen-menu h1", "menu.title"],
+    ["#screen-menu .block-card:nth-of-type(1) h2", "menu.b1t"],
+    ["#screen-menu .block-card:nth-of-type(1) h2 small", "menu.b1s"],
+    ["#screen-menu .block-card:nth-of-type(1) p", "menu.b1d"],
+    ["#screen-menu .block-card:nth-of-type(2) h2", "menu.b2t"],
+    ["#screen-menu .block-card:nth-of-type(2) h2 small", "menu.b2s"],
+    ["#screen-menu .block-card:nth-of-type(2) p", "menu.b2d"],
+    ["#menu-b1-start", "menu.start"], ["#menu-b2-start", "menu.start"],
+    ["#menu-b1-history", "menu.history"], ["#menu-b2-history", "menu.history"],
+    ["#menu-export", "menu.export"], ["#menu-import", "menu.import"], ["#menu-switch", "nav.switch"],
+    ["#config-form>button.primary", "c.begin"], ["#b2-config-form>button.primary", "c.begin"],
+    ["#btn-history", "c.seeHistory"], ["#b2-btn-history", "c.seeHistory"],
+    ["#btn-b1-menu", "c.backMenu"], ["#b2-btn-menu", "c.backMenu"],
+    ["#screen-result h2", "r.titleB1"], ["#screen-b2-result h2", "r.titleB2"],
+    ["#screen-result h3", "r.faultMap"], ["#screen-b2-result h3", "r.errMap"],
+    ['#result-heat-toggle .seg[data-mode="one"]', "r.this"], ['#result-heat-toggle .seg[data-mode="acc"]', "r.acc"],
+    ['#b2-result-heat-toggle .seg[data-mode="one"]', "r.this"], ['#b2-result-heat-toggle .seg[data-mode="acc"]', "r.acc"],
+    ["#btn-save-session", "r.save"], ["#b2-btn-save", "r.save"],
+    ["#btn-discard", "r.discard"], ["#b2-btn-discard", "r.discard"],
+    ["#screen-history h2", "h.titleB1"], ["#screen-b2-history h2", "h.titleB2"],
+    ["#screen-b2-history h3:nth-of-type(1)", "h.evo"],
+    ['#hist-heat-toggle .seg[data-mode="acc"]', "h.accAll"], ['#hist-heat-toggle .seg[data-mode="last"]', "h.lastSes"],
+    ['#b2-hist-heat-toggle .seg[data-mode="acc"]', "h.accAll"], ['#b2-hist-heat-toggle .seg[data-mode="last"]', "h.lastSes"],
+    ['#b2-hist-mode .seg[data-mode="letter-search"]', "b2.modA"], ['#b2-hist-mode .seg[data-mode="word-sequence"]', "b2.modB"],
+    ["#btn-export", "h.json"], ["#btn-export-csv", "h.csv"], ["#b2-export-csv", "h.csv"],
+    ["#btn-import", "h.import"], ["#btn-clear", "h.clear"], ["#btn-back-config", "h.home"],
+    ["#btn-detail-back", "d.back"], ["#b2-detail-back", "d.back"],
+    ["#btn-detail-export", "d.exportSes"], ["#b2-detail-export", "d.exportSes"],
+    ["#b2-btn-back-menu", "nav.menu"],
+    [".heatmap-pair .heatmap-cap", "d.thisMap"],
+    ["#rotate-gate h2", "ex.rotateTitle"], ["#rotate-gate p", "ex.rotateText"],
+    ["#b2-rotate-gate h2", "ex.rotateTitle"], ["#b2-rotate-gate p", "ex.rotateText"],
+    ["#btn-rotate-cancel", "nav.cancel"], ["#b2-rotate-cancel", "nav.cancel"],
+    ["#b2-pause-overlay h2", "ex.pausedTitle"], ["#b2-pause-overlay p", "ex.pausedText"],
+    ["#b2-repeat", "ex.repeat"], ["#b2-finish", "ex.finish"], ["#b2-pause-btn", "ex.pause"], ["#b2-word-restart", "ex.restartWord"],
+  ];
+
+  function setLang(code) {
+    curLangCode = LANGS.some((l) => l[0] === code) ? code : "es";
+    try { localStorage.setItem(LANG_KEY, curLangCode); } catch (e) { /* nada */ }
+    const L = langDef();
+    document.documentElement.lang = curLangCode;
+    document.documentElement.dir = L[4] ? "rtl" : "ltr";
+    $("#lang-cur-flag").innerHTML = flagHtml(L).replace(/<\/?span[^>]*>/g, function (m) { return m.indexOf("img") >= 0 ? m : ""; }) || "";
+    $("#lang-cur-flag").innerHTML = L[2].indexOf("data:") === 0 ? '<img alt="" src="' + L[2] + '">' : L[2];
+    $("#lang-cur-name").textContent = L[1];
+    // data-i18n / data-i18n-ph
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.getAttribute("data-i18n")); });
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = t(el.getAttribute("data-i18n-ph")); });
+    // mapa de selectores
+    DOM_MAP.forEach((m) => {
+      document.querySelectorAll(m[0]).forEach((el) => {
+        if (el.children.length && m[0].indexOf("h2") < 0) setFirstText(el, t(m[1]));
+        else if (el.querySelector("small") || el.querySelector(".ver")) setFirstText(el, t(m[1]));
+        else el.textContent = t(m[1]);
+      });
+    });
+    // segundos h3 (mapas) de los historiales
+    const h3b1 = document.querySelectorAll("#screen-history h3");
+    if (h3b1[1]) h3b1[1].textContent = t("r.faultMap");
+    const h3b2 = document.querySelectorAll("#screen-b2-history h3");
+    if (h3b2[1]) h3b2[1].textContent = t("r.errMap");
+    if (h3b2[2]) h3b2[2].textContent = t("h.letters");
+    if (h3b2[3]) h3b2[3].textContent = t("h.selectSes");
+    const caps = document.querySelectorAll(".heatmap-pair .heatmap-cap");
+    caps.forEach((c, i) => { c.textContent = i % 2 === 0 ? t("d.thisMap") : t("d.accMap"); });
+    renderLangList($("#lang-search") ? $("#lang-search").value : "");
+    // refrescar contenido dinámico visible
+    if (activeProfileId) {
+      if ($("#screen-menu").classList.contains("active")) openMenu();
+      if ($("#screen-history").classList.contains("active")) renderHistory();
+      if ($("#screen-b2-history").classList.contains("active")) b2RenderHistory();
+    }
+    if ($("#screen-profiles").classList.contains("active")) renderProfiles();
+  }
+
+  // =====================================================================
+  //  Pausa / reanudación del Bloque 1 (en cualquier momento del ejercicio)
+  // =====================================================================
+  let b1Phase = "stim";      // stim | view | isi
+  let b1PauseStart = 0, b1Paused = false;
+
+  function b1Pause() {
+    if (!session || b1Paused || !begun) return;
+    b1Paused = true;
+    b1PauseStart = performance.now();
+    clearViewTimer(); clearIsiTimer(); clearSkipTimer(); hideSkipFrame();
+    locked = true;
+    $("#b1-pause-overlay").classList.remove("hidden");
+  }
+  function b1Resume() {
+    if (!session || !b1Paused) return;
+    b1Paused = false;
+    const delta = performance.now() - b1PauseStart;
+    $("#b1-pause-overlay").classList.add("hidden");
+    if (b1Phase === "stim") {
+      const st = session.stimuli[session.current];
+      if (st && st.shownAt != null) st.shownAt += delta;   // el tiempo en pausa no cuenta
+      locked = false;
+      armSkipFrame();
+    } else if (b1Phase === "view") {
+      viewTimer = setTimeout(advance, 600);
+    } else {                                               // isi: reprogramar aparición
+      scheduleStimulus(session.current);
+    }
   }
 
   // =====================================================================
@@ -3365,13 +4031,13 @@ button.link {
     // Resultado: el dashboard se construye sobre pendingRecord (editable).
     $("#btn-save-session").addEventListener("click", saveCurrentSession);
     $("#btn-discard").addEventListener("click", () => {
-      if (confirm("¿Descartar esta sesión sin guardarla?")) {
+      if (confirm(t("r.confirmDiscard"))) {
         pendingRecord = null; session = null; showScreen("#screen-config");
       }
     });
 
     $("#btn-clear").addEventListener("click", () => {
-      if (confirm("¿Borrar todo el historial de sesiones?")) { saveSessions([]); renderHistory(); }
+      if (confirm(t("h.confirmClear"))) { saveSessions([]); renderHistory(); }
     });
     $("#btn-export").addEventListener("click", exportData);
     $("#btn-export-csv").addEventListener("click", exportCsv);
@@ -3475,7 +4141,7 @@ button.link {
     // ---- Bloque 2: resultado, historial y detalle ----
     $("#b2-btn-save").addEventListener("click", b2SaveSession);
     $("#b2-btn-discard").addEventListener("click", () => {
-      if (confirm("¿Descartar esta sesión sin guardarla?")) { pendingB2 = null; openMenu(); }
+      if (confirm(t("r.confirmDiscard"))) { pendingB2 = null; openMenu(); }
     });
     $("#b2-hist-mode").querySelectorAll(".seg").forEach((b) => {
       b.addEventListener("click", () => { b2HistMode = b.dataset.mode; b2RenderHistory(); });
@@ -3488,6 +4154,26 @@ button.link {
       const rec = sessionsOf("block2").find((s) => s.id === b2DetailId);
       if (rec) downloadBlob(JSON.stringify(rec, null, 2), "application/json",
         "bloque2-sesion-" + rec.id + ".json");
+    });
+
+    // ---- Selector de idioma ----
+    DOM_MAP.push(["#skip-frame .skip-label", "ex.bandB1"]);
+    $("#lang-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const p = $("#lang-panel");
+      p.classList.toggle("hidden");
+      if (!p.classList.contains("hidden")) { renderLangList(""); $("#lang-search").value = ""; $("#lang-search").focus(); }
+    });
+    $("#lang-search").addEventListener("input", () => renderLangList($("#lang-search").value));
+    document.addEventListener("pointerdown", (e) => {
+      if (!e.target.closest("#lang-sel")) closeLangPanel();
+    });
+
+    // ---- Pausa / finalizar del Bloque 1 ----
+    $("#b1-pause-btn").addEventListener("click", b1Pause);
+    $("#b1-resume").addEventListener("click", b1Resume);
+    $("#b1-finish-btn").addEventListener("click", () => {
+      if (confirm(t("ex.confirmExit"))) { cleanupExercise(); showScreen("#screen-config"); }
     });
   }
 
@@ -3612,6 +4298,10 @@ button.link {
     try {
       migrateLegacy();          // datos de la versión anterior → almacén global
       bindUI();
+      // Idioma recordado (o español por defecto).
+      let savedLang = "es";
+      try { savedLang = localStorage.getItem(LANG_KEY) || "es"; } catch (e) { /* nada */ }
+      setLang(savedLang);
       renderProfiles();
       showScreen("#screen-profiles");   // flujo obligatorio: primero el perfil
     } catch (e) {
