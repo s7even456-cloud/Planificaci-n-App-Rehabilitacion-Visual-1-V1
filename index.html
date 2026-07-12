@@ -148,12 +148,15 @@ input[type="text"] {
   position: absolute; left: 50%; top: 7%; transform: translateX(-50%);
   font-size: clamp(1.2rem, 4vmin, 2.2rem); font-weight: 800; color: var(--accent);
   background: rgba(255,255,255,0.85); border-radius: 10px; padding: 4px 16px;
-  z-index: 4; pointer-events: none; letter-spacing: 2px;
+  z-index: 7; pointer-events: none; letter-spacing: 2px;
 }
 .b2-controls {
-  position: fixed; top: 0; right: 0; z-index: 6;
+  position: fixed; top: 0; right: 0; z-index: 8;
   display: flex; gap: 6px; padding: 8px;
 }
+/* La banda del B2 es algo más fina para restar poco espacio a las letras. */
+#b2-skip-frame { --frame: clamp(44px, 8vmin, 92px); }
+#b2-skip-frame .skip-label { font-size: clamp(0.62rem, 1.5vw, 0.9rem); }
 .b2-controls .ghost { padding: 8px 12px; font-size: 0.85rem; opacity: 0.85; }
 .b2-hud { z-index: 5; }
 
@@ -895,8 +898,9 @@ button.link {
             <small class="hint-text">&lt;1 crecen antes; &gt;1 crecen sobre todo en la periferia.</small></label>
           <label class="field"><span>Tamaño del punto central: <output id="b2-out-center">2.5</output>%</span>
             <input type="range" id="b2-center-size" min="1" max="6" step="0.5" value="2.5" /></label>
-          <label class="field"><span>Zona de exclusión central: <output id="b2-out-excl">14</output>%</span>
-            <input type="range" id="b2-excl" min="8" max="30" value="14" /></label>
+          <label class="field"><span>Zona de exclusión central: <output id="b2-out-excl">7</output>%</span>
+            <input type="range" id="b2-excl" min="4" max="30" value="7" />
+            <small class="hint-text">Solo protege el punto de fijación: las letras empiezan a aparecer desde cerca del centro y crecen hacia la periferia.</small></label>
         </fieldset>
 
         <fieldset>
@@ -918,6 +922,9 @@ button.link {
             <input type="range" id="b2-wmax" min="3" max="7" value="5" /></label>
           <label class="field"><span>Pausa entre palabras/objetivos: <output id="b2-out-pause">1.2</output> s</span>
             <input type="range" id="b2-pause" min="0.3" max="4" step="0.1" value="1.2" /></label>
+          <label class="field"><span>Mostrar banda «No la veo / siguiente» tras: <output id="b2-out-skip">6</output> s</span>
+            <input type="range" id="b2-skip-delay" min="2" max="15" step="1" value="6" />
+            <small class="hint-text">Banda alrededor de todo el borde de la pantalla; se activa con doble toque en cualquier punto de ella.</small></label>
         </fieldset>
 
         <fieldset>
@@ -942,11 +949,16 @@ button.link {
       <div id="b2-fixation" class="b2-fixation"></div>
       <div id="b2-written-target" class="b2-written hidden"></div>
     </div>
+    <div id="b2-skip-frame" class="skip-frame hidden" aria-label="No la veo, siguiente">
+      <div class="skip-edge top"><span class="skip-label"><span class="skip-ico">⊘</span><span class="b2-skip-txt">No la veo · siguiente · doble toque</span></span></div>
+      <div class="skip-edge bottom"><span class="skip-label"><span class="skip-ico">⊘</span><span class="b2-skip-txt">No la veo · siguiente · doble toque</span></span></div>
+      <div class="skip-edge left"><span class="skip-label"><span class="skip-ico">⊘</span><span class="b2-skip-txt">No la veo · siguiente · doble toque</span></span></div>
+      <div class="skip-edge right"><span class="skip-label"><span class="skip-ico">⊘</span><span class="b2-skip-txt">No la veo · siguiente · doble toque</span></span></div>
+    </div>
     <div id="b2-controls" class="b2-controls">
       <button type="button" id="b2-repeat" class="ghost">🔊 Repetir</button>
       <button type="button" id="b2-word-restart" class="ghost hidden">↺ Reiniciar palabra</button>
-      <button type="button" id="b2-skip" class="ghost">⏭ No la encuentro</button>
-      <button type="button" id="b2-pause" class="ghost">⏸ Pausa</button>
+      <button type="button" id="b2-pause-btn" class="ghost">⏸ Pausa</button>
       <button type="button" id="b2-finish" class="ghost danger">✕ Finalizar</button>
     </div>
     <div class="hud b2-hud">
@@ -960,6 +972,17 @@ button.link {
         <p>Los tiempos están detenidos. Reanuda cuando estés preparado.</p>
         <div class="rotate-actions">
           <button type="button" id="b2-resume" class="primary">▶ Reanudar</button>
+        </div>
+      </div>
+    </div>
+    <div id="b2-rotate-gate" class="rotate-gate hidden">
+      <div class="rotate-card">
+        <div class="rotate-ico">⟳</div>
+        <h2>Gira el dispositivo a horizontal</h2>
+        <p>Este ejercicio se realiza siempre en posición <b>horizontal</b>.
+           Empezará automáticamente al girar el dispositivo.</p>
+        <div class="rotate-actions">
+          <button type="button" id="b2-rotate-cancel" class="ghost">Cancelar</button>
         </div>
       </div>
     </div>
@@ -2494,6 +2517,7 @@ button.link {
       wmin: parseInt($("#b2-wmin").value, 10),
       wmax: parseInt($("#b2-wmax").value, 10),
       pause: parseFloat($("#b2-pause").value),
+      skipDelay: parseInt($("#b2-skip-delay").value, 10),
       sound: $("#b2-sound").checked,
       vibrate: $("#b2-vibrate").checked,
     };
@@ -2512,12 +2536,13 @@ button.link {
     set("#b2-center-size", c.centerSize); set("#b2-excl", c.excl);
     set("#b2-rate", c.rate); set("#b2-vol", c.volume); set("#b2-written", c.written);
     set("#b2-wmin", c.wmin); set("#b2-wmax", c.wmax); set("#b2-pause", c.pause);
+    set("#b2-skip-delay", c.skipDelay);
     set("#b2-sound", c.sound); set("#b2-vibrate", c.vibrate);
   }
   const B2_PRESETS = {
-    easy: { visible: 10, count: 6, minSize: 3.5, maxSize: 9, exp: 1, excl: 16, rate: 0.8, pause: 2, reshuffle: false },
-    mid: { visible: 18, count: 10, minSize: 2.5, maxSize: 7, exp: 1, excl: 14, rate: 0.9, pause: 1.2, reshuffle: false },
-    hard: { visible: 27, count: 15, minSize: 2, maxSize: 5.5, exp: 1.2, excl: 12, rate: 1, pause: 0.8, reshuffle: true },
+    easy: { visible: 10, count: 6, minSize: 3.5, maxSize: 9, exp: 1, excl: 10, rate: 0.8, pause: 2, skipDelay: 9, reshuffle: false },
+    mid: { visible: 18, count: 10, minSize: 2.5, maxSize: 7, exp: 1, excl: 7, rate: 0.9, pause: 1.2, skipDelay: 6, reshuffle: false },
+    hard: { visible: 27, count: 15, minSize: 2, maxSize: 5.5, exp: 1.2, excl: 5, rate: 1, pause: 0.8, skipDelay: 4, reshuffle: true },
   };
 
   function openBlock2Config() {
@@ -2529,9 +2554,11 @@ button.link {
   }
 
   // ---- Construcción del conjunto de letras visibles ----
+  // Las 5 vocales aparecen SIEMPRE, además de las letras necesarias (palabras).
   function b2BuildLetterSet(cfg, needed) {
     const base = ALPHABET.filter((l) => l !== "Ñ" || cfg.enye);
     const chosen = {};
+    ["A", "E", "I", "O", "U"].forEach((v) => { chosen[v] = true; });
     (needed || []).forEach((l) => { chosen[l] = true; });
     const out = Object.keys(chosen);
     const pool = shuffleArr(base.filter((l) => !chosen[l]));
@@ -2544,8 +2571,16 @@ button.link {
     return letter;
   }
 
+  // Grosor de la banda perimetral «No la veo» del Bloque 2 (coincide con CSS).
+  function b2FramePx() {
+    return clamp(0.08 * Math.min(window.innerWidth, window.innerHeight), 44, 92);
+  }
+
   // ---- Distribución espacial con tamaño radial progresivo ----
-  // tamaño = mín + factorRadial^exp × (máx − mín), con factorRadial ∈ [0,1].
+  // Imita el ejercicio en pizarra: las letras se reparten desde MUY CERCA del
+  // punto de fijación hasta la periferia (radios crecientes equiespaciados con
+  // jitter, ángulo aleatorio), sin dejar vacío el espacio central. El tamaño
+  // crece con el radio: tamaño = mín + factorRadial^exp × (máx − mín).
   function b2Layout() {
     const stage = $("#b2-stage");
     stage.querySelectorAll(".b2-letter").forEach((e) => e.remove());
@@ -2554,36 +2589,55 @@ button.link {
     const cfg = b2.config;
     const cx = W / 2, cy = H / 2;
     const exclPx = (cfg.excl / 100) * vmin;
-    const margin = 0.045 * vmin;
+    const margin = b2FramePx() + 4;           // nunca bajo la banda perimetral
     const rMax = Math.hypot(W / 2 - margin, H / 2 - margin);
     const placed = [];
+    const n = b2.letterSet.length;
+    const sizeAt = (r) => {
+      const f = clamp((r - exclPx) / Math.max(1, rMax - exclPx), 0, 1);
+      return cfg.minSize + Math.pow(f, cfg.exp) * (cfg.maxSize - cfg.minSize);
+    };
 
     b2.layout = {};
-    b2.letterSet.forEach((letter) => {
+    const order = shuffleArr(b2.letterSet.slice());   // qué letra ocupa cada anillo
+    order.forEach((letter, i) => {
+      // Radio objetivo del anillo i: llena de dentro hacia fuera todo el espacio.
+      const rBase = exclPx + ((i + 0.5) / n) * (rMax - exclPx);
       let ok = null;
-      for (let tries = 0; tries < 600 && !ok; tries++) {
-        const x = margin + Math.random() * (W - 2 * margin);
-        const y = margin + Math.random() * (H - 2 * margin);
-        // Evitar la zona de controles (esquina superior derecha).
-        if (y < 64 && x > W - 420) continue;
-        const r = Math.hypot(x - cx, y - cy);
-        const f = clamp((r - exclPx) / Math.max(1, rMax - exclPx), 0, 1);
-        const sizePct = cfg.minSize + Math.pow(f, cfg.exp) * (cfg.maxSize - cfg.minSize);
+      for (let tries = 0; tries < 700 && !ok; tries++) {
+        // Jitter radial creciente con los intentos para encontrar hueco.
+        const jr = (rMax - exclPx) / n * (0.6 + tries / 250);
+        const r = clamp(rBase + (Math.random() * 2 - 1) * jr, exclPx + 2, rMax);
+        const ang = Math.random() * Math.PI * 2;
+        const x = cx + Math.cos(ang) * r;
+        const y = cy + Math.sin(ang) * r;
+        const sizePct = sizeAt(r);
         const fpx = (sizePct / 100) * vmin;
-        if (r < exclPx + fpx / 2) continue;                    // zona de exclusión central
-        if (x - fpx / 2 < 6 || x + fpx / 2 > W - 6) continue;  // sin recortes laterales
-        if (y - fpx / 2 < 6 || y + fpx / 2 > H - 6) continue;
-        const factor = tries < 300 ? 0.68 : 0.52;              // relajar si cuesta colocar
+        if (x - fpx / 2 < margin || x + fpx / 2 > W - margin) continue;   // fuera de banda
+        if (y - fpx / 2 < margin || y + fpx / 2 > H - margin) continue;
+        if (y < 64 && x > W - 420) continue;      // esquina de controles
+        if (r < exclPx + fpx / 2) continue;       // no invadir la fijación
+        const factor = tries < 350 ? 0.66 : 0.5;  // relajar si cuesta colocar
         const collide = placed.some((p) => Math.hypot(p.x - x, p.y - y) < (p.fpx + fpx) * factor);
         if (collide) continue;
         ok = { x, y, fpx, sizePct };
       }
-      if (!ok) {  // último recurso: colocar en anillo libre aproximado
-        const ang = Math.random() * Math.PI * 2;
-        const rr = exclPx + Math.random() * (rMax - exclPx - margin);
-        ok = { x: clamp(cx + Math.cos(ang) * rr, margin, W - margin),
-               y: clamp(cy + Math.sin(ang) * rr, margin, H - margin),
-               fpx: (cfg.minSize / 100) * vmin, sizePct: cfg.minSize };
+      if (!ok) {  // último recurso: cualquier hueco válido dentro del área útil
+        for (let tries = 0; tries < 400 && !ok; tries++) {
+          const x = margin + Math.random() * (W - 2 * margin);
+          const y = margin + Math.random() * (H - 2 * margin);
+          const r = Math.hypot(x - cx, y - cy);
+          if (r < exclPx + 4) continue;
+          const sizePct = sizeAt(r);
+          const fpx = (sizePct / 100) * vmin;
+          if (placed.some((p) => Math.hypot(p.x - x, p.y - y) < (p.fpx + fpx) * 0.5)) continue;
+          ok = { x, y, fpx, sizePct };
+        }
+        if (!ok) {
+          const ang = Math.random() * Math.PI * 2;
+          ok = { x: cx + Math.cos(ang) * rBase, y: cy + Math.sin(ang) * rBase,
+                 fpx: (cfg.minSize / 100) * vmin, sizePct: sizeAt(rBase) };
+        }
       }
       placed.push(ok);
       const el = document.createElement("div");
@@ -2615,7 +2669,8 @@ button.link {
     }
     b2 = {
       config: cfg, startedAt: Date.now(), attempts: [], state: "countdown",
-      pausedMs: 0, pauseStart: 0, ti: 0, targets: [], cur: null,
+      pausedMs: 0, pauseStart: 0, ti: 0, targets: [], cur: null, begun: false,
+      pendingNext: false,
       letterSet: b2BuildLetterSet(cfg, needed), layout: {},
     };
     if (cfg.mode === "letter-search") {
@@ -2632,26 +2687,49 @@ button.link {
     fix.style.height = cfg.centerSize + "vmin";
 
     $("#b2-word-restart").classList.toggle("hidden", cfg.mode !== "word-sequence");
-    $("#b2-skip").textContent = cfg.mode === "word-sequence" ? "⏭ Saltar palabra" : "⏭ No la encuentro";
+    // Texto de la banda perimetral según la modalidad.
+    const skipTxt = cfg.mode === "word-sequence"
+      ? "Saltar palabra · doble toque" : "No la veo · siguiente · doble toque";
+    document.querySelectorAll("#b2-skip-frame .b2-skip-txt").forEach((el) => { el.textContent = skipTxt; });
     $("#b2-written-target").classList.add("hidden");
     $("#b2-hint").textContent = "Mantén la mirada en el punto central";
 
     showScreen("#screen-b2-exercise");
     requestFs();
-    lockCurrentOrientation();
     b2Fit();
-    window.addEventListener("resize", b2Fit);
+    window.addEventListener("resize", onB2ExResize);
     acquireWakeLock();
     document.addEventListener("visibilitychange", onVisWake);
     window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("keydown", onB2Key);
     $("#b2-stage").addEventListener("pointerdown", onB2Tap);
 
+    // Uso SIEMPRE en horizontal: en dispositivo táctil en vertical, esperar al giro.
+    const touchLike = resolveMode("auto") !== "pc";
+    if (touchLike && isPortrait()) {
+      $("#b2-rotate-gate").classList.remove("hidden");
+    } else {
+      b2Begin();
+    }
+  }
+
+  // Arranque real: genera el reparto en la orientación definitiva y bloquea.
+  function b2Begin() {
+    if (!b2 || b2.begun) return;
+    b2.begun = true;
+    $("#b2-rotate-gate").classList.add("hidden");
+    lockCurrentOrientation();
+    b2Fit();
     b2Layout();
     runCountdown(function () {
       b2.state = "running";
       b2NextTarget();
     }, "#b2-countdown");
+  }
+
+  function onB2ExResize() {
+    b2Fit();
+    if (b2 && !b2.begun && !isPortrait()) b2Begin();
   }
 
   function b2Fit() {
@@ -2676,6 +2754,27 @@ button.link {
     if (repeat && b2.cur) b2.cur.audioRepeats++;
   }
 
+  // ---- Banda perimetral «No la veo / siguiente» (doble toque) ----
+  let b2SkipTimer = null, b2LastSkipTap = 0;
+  function b2ClearSkipTimer() { if (b2SkipTimer) { clearTimeout(b2SkipTimer); b2SkipTimer = null; } }
+  function b2HideSkipFrame() { $("#b2-skip-frame").classList.add("hidden"); }
+  function b2ArmSkipFrame() {
+    b2ClearSkipTimer();
+    b2HideSkipFrame();
+    b2SkipTimer = setTimeout(function () {
+      $("#b2-skip-frame").classList.remove("hidden");
+      b2LastSkipTap = 0;
+    }, b2.config.skipDelay * 1000);
+  }
+  function onB2SkipActivate(e) {
+    if (!e.target.closest(".skip-edge")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - b2LastSkipTap < DBLTAP_MS) { b2LastSkipTap = 0; b2Skip(); }
+    else { b2LastSkipTap = now; }
+  }
+
   function b2NextTarget() {
     b2ClearTimer();
     if (!b2) return;
@@ -2691,6 +2790,7 @@ button.link {
     b2.state = "running";
     $("#b2-progress").textContent = (b2.ti + 1) + " / " + b2.targets.length;
     b2Announce(false);
+    b2ArmSkipFrame();
   }
 
   function b2FlashLetter(letter, ok) {
@@ -2724,6 +2824,7 @@ button.link {
         timestamp: Date.now(),
       });
       b2FlashLetter(letter, true); sndOk(); vibrate(35);
+      b2ClearSkipTimer(); b2HideSkipFrame();
       b2.ti++; b2.state = "wait";
       b2Timer = setTimeout(b2NextTarget, b2.config.pause * 1000);
     } else {
@@ -2752,6 +2853,7 @@ button.link {
           audioRepeats: cur.audioRepeats, restarted: cur.restarted,
           timestamp: Date.now(),
         });
+        b2ClearSkipTimer(); b2HideSkipFrame();
         b2.ti++; b2.state = "wait";
         $("#b2-hint").textContent = "Mantén la mirada en el punto central";
         b2Timer = setTimeout(b2NextTarget, b2.config.pause * 1000);
@@ -2784,6 +2886,7 @@ button.link {
       });
     }
     sndFail(); vibrate([0, 90, 60, 90]);
+    b2ClearSkipTimer(); b2HideSkipFrame();
     b2.ti++;
     b2NextTarget();
   }
@@ -2795,8 +2898,12 @@ button.link {
     b2Announce(true);
   }
 
+  // Pausa disponible tanto durante la búsqueda («running») como en la espera
+  // entre objetivos («wait»): congela los tiempos y el temporizador pendiente.
   function b2Pause() {
-    if (!b2 || b2.state !== "running") return;
+    if (!b2 || (b2.state !== "running" && b2.state !== "wait")) return;
+    if (b2.state === "wait") { b2ClearTimer(); b2.pendingNext = true; }
+    b2ClearSkipTimer(); b2HideSkipFrame();
     b2.state = "paused"; b2.pauseStart = performance.now();
     try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* nada */ }
     $("#b2-pause-overlay").classList.remove("hidden");
@@ -2804,9 +2911,16 @@ button.link {
   function b2Resume() {
     if (!b2 || b2.state !== "paused") return;
     b2.pausedMs += performance.now() - b2.pauseStart;
-    b2.state = "running";
     $("#b2-pause-overlay").classList.add("hidden");
-    b2Announce(true);
+    if (b2.pendingNext) {              // estaba entre objetivos: continuar al siguiente
+      b2.pendingNext = false;
+      b2.state = "wait";
+      b2Timer = setTimeout(b2NextTarget, 500);
+    } else {                           // estaba buscando: repetir la instrucción
+      b2.state = "running";
+      b2Announce(true);
+      b2ArmSkipFrame();
+    }
   }
 
   function onB2Key(e) {
@@ -2820,12 +2934,14 @@ button.link {
   }
 
   function b2Cleanup() {
-    b2ClearTimer(); clearCdTimer();
+    b2ClearTimer(); clearCdTimer(); b2ClearSkipTimer();
+    b2HideSkipFrame();
     $("#b2-countdown").classList.add("hidden");
     $("#b2-pause-overlay").classList.add("hidden");
+    $("#b2-rotate-gate").classList.add("hidden");
     $("#b2-stage").removeEventListener("pointerdown", onB2Tap);
     document.removeEventListener("keydown", onB2Key);
-    window.removeEventListener("resize", b2Fit);
+    window.removeEventListener("resize", onB2ExResize);
     document.removeEventListener("visibilitychange", onVisWake);
     window.removeEventListener("beforeunload", onBeforeUnload);
     releaseWakeLock(); unlockOrientation(); exitFs();
@@ -3270,11 +3386,15 @@ button.link {
 
     // ---- Bloque 2: controles de sesión ----
     $("#b2-repeat").addEventListener("click", () => { if (b2 && b2.state === "running") b2Announce(true); });
-    $("#b2-skip").addEventListener("click", b2Skip);
     $("#b2-word-restart").addEventListener("click", b2WordRestart);
-    $("#b2-pause").addEventListener("click", b2Pause);
+    $("#b2-pause-btn").addEventListener("click", b2Pause);
     $("#b2-resume").addEventListener("click", b2Resume);
     $("#b2-finish").addEventListener("click", b2Finish);
+    // Banda perimetral «No la veo / siguiente»: doble toque en cualquier punto.
+    $("#b2-skip-frame").addEventListener("pointerup", onB2SkipActivate);
+    // Aviso de giro a horizontal del Bloque 2.
+    $("#b2-rotate-cancel").addEventListener("click", () => { b2Cleanup(); b2 = null; openBlock2Config(); });
+    sync("#b2-skip-delay", "#b2-out-skip");
 
     // ---- Bloque 2: resultado, historial y detalle ----
     $("#b2-btn-save").addEventListener("click", b2SaveSession);
