@@ -1,4 +1,4 @@
-# Plataforma de Ejercicios de Rehabilitación Visual (v5.1)
+# Plataforma de Ejercicios de Rehabilitación Visual (v5.2)
 
 Plataforma **modular y multiusuario** de ejercicios de exploración y atención
 visual, pensada para rehabilitación del campo visual (p. ej. hemianopsia) bajo
@@ -84,6 +84,26 @@ datos es una vista filtrada por perfil+bloque) · Block2Controller (layout radia
 modalidades, registro) · SpeechManager · componentes compartidos: tarjetas,
 `fillHeatmap`, `wireHeatToggle`, `drawTimeChart`, `fitCanvas`, tonos, vibración,
 Wake Lock, pantalla completa, cuenta atrás · Export/ImportManager.
+
+## Idiomas (v5.2)
+
+- Selector de idioma con banderas, búsqueda y memoria en todas las pantallas
+  (excepto durante los ejercicios). 41 idiomas disponibles.
+- **11 idiomas con traducción completa** (interfaz, formularios de
+  configuración, panel de distancia recomendada, estadísticas): Español
+  (por defecto), Català, Valencià, Galego, Euskera, English, Português,
+  Italiano, Français, Deutsch, Русский.
+- **30 idiomas adicionales** con el núcleo de la interfaz traducido (menús,
+  botones principales, pausa/reanudar/finalizar…); el resto de textos cae a
+  inglés. Marcados como «parcial» en el selector.
+- **Contenido del ejercicio del Bloque 2 adaptado a cada escritura**, no solo
+  traducido: hanzi de trazos simples (chino), kana (japonés), sílabas hangul
+  (coreano), alfabetos árabe/hebreo/persa/urdu (con dirección RTL en la
+  interfaz), devanagari (hindi), bengalí, tailandés (palabras sin marcas
+  vocálicas), griego, cirílico (ruso/ucraniano/búlgaro/serbio) y bancos de
+  palabras nativas sin tildes para los idiomas de alfabeto latino. La voz
+  (`speechSynthesis`) usa el código de idioma correspondiente si el
+  dispositivo dispone de esa voz.
 
 ## Privacidad
 
