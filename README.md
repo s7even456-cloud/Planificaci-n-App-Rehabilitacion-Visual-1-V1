@@ -1,4 +1,4 @@
-# Plataforma de Ejercicios de Rehabilitación Visual (v5.2)
+# Plataforma de Ejercicios de Rehabilitación Visual (v5.3)
 
 Plataforma **modular y multiusuario** de ejercicios de exploración y atención
 visual, pensada para rehabilitación del campo visual (p. ej. hemianopsia) bajo
@@ -29,6 +29,12 @@ franja perimetral «No la veo», puntuación automática con tolerancia ajustabl
 y corrección manual, hemicampos, mapas de fallos (sesión/acumulado), gráfico
 de evolución, CSV, pantalla completa, Wake Lock, sonido y vibración.
 
+Desde la v5.3 se puede acotar además el **área radial de aparición**: dos
+controles fijan el anillo de trabajo desde el centro (0 %) hasta la periferia
+(100 %), para entrenar de forma selectiva una franja del campo visual. Se
+conserva siempre una anchura mínima del 15 % del radio, de modo que quepan
+todos los estímulos configurados.
+
 ## Bloque 2 — Letras
 
 Punto de fijación **circular** central (alto contraste, tamaño configurable,
@@ -46,6 +52,19 @@ sin solaparse, con **tamaño progresivo según la distancia al centro**
   usuario selecciona sus letras en orden; las letras repetidas se pulsan
   varias veces. Reiniciar palabra, repetir audio, saltar (queda registrada
   como incompleta), pausa y reanudación.
+- **Modalidad C — Decir la letra en voz alta (micrófono)**: aparece una única
+  letra cada vez, en una posición aleatoria y con **tamaño y tiempos
+  configurables** (tiempo visible de la letra y tiempo máximo de respuesta,
+  0 = sin límite), manteniendo una **cruz de fijación** en el centro. La app
+  pide permiso de micrófono y escucha la respuesta mediante reconocimiento de
+  voz: marca la letra en **verde** si es correcta y en **rojo** si no, con
+  señal acústica y vibración, y avanza a la siguiente **siempre que haya
+  respuesta**, se acierte o no. Si no se agota el tiempo, se registra como
+  «sin respuesta». Los homófonos del español (b/v) se resuelven a favor del
+  usuario. Si el navegador no reconoce voz o se deniega el micrófono, se
+  puede responder pulsando la letra en el teclado. Su dashboard e historial
+  recogen precisión, aciertos, errores (con la letra dicha en la columna de
+  confusiones), sin respuesta, tiempo medio, hemicampos y mapa de errores.
 - Controles de sesión: repetir, pausar/reanudar, saltar, finalizar (con
   confirmación; la sesión queda «completada» o «interrumpida» conservando los
   intentos). Pantalla completa, Wake Lock, sonido/vibración, cuenta atrás.
@@ -104,6 +123,29 @@ Wake Lock, pantalla completa, cuenta atrás · Export/ImportManager.
   palabras nativas sin tildes para los idiomas de alfabeto latino. La voz
   (`speechSynthesis`) usa el código de idioma correspondiente si el
   dispositivo dispone de esa voz.
+
+## Corrección de resultados (v5.3)
+
+Se detectaron y corrigieron varios errores que falseaban los datos de la
+modalidad **Formar palabra**:
+
+- La **precisión** se calculaba comparando solo las pulsaciones correctas
+  entre sí, así que una sesión sin ninguna palabra terminada podía mostrar
+  **100 %**. Ahora es *letras localizadas / letras pedidas*, penalizando
+  además cada selección errónea, y se añade la tarjeta «Letras localizadas».
+- La **tabla por letra** no contaba los aciertos ni los tiempos (mostraba 0
+  aciertos aunque se acertara todo).
+- El **mapa de errores** quedaba vacío: no se guardaba la posición de la
+  letra que no se llegó a localizar, ni los toques que no alcanzaban ninguna
+  letra. Ambos se registran ya y alimentan también los hemicampos.
+- La **zona pulsable** de las letras periféricas (con su relleno) invadía unos
+  píxeles la banda perimetral, que se comprobaba antes: la pulsación se perdía
+  y el segundo intento se interpretaba como doble toque, saltando la palabra
+  entera. La letra tiene ahora prioridad sobre la banda.
+- Un objetivo a medias al pulsar «Finalizar» se descartaba; ahora se guarda
+  como incompleto.
+- Un motor de voz presente pero **sin voces instaladas** dejaba al usuario sin
+  instrucción; ahora se detecta y se muestra la palabra o letra por escrito.
 
 ## Privacidad
 

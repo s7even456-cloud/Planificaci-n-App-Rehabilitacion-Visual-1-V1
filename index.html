@@ -136,6 +136,13 @@ input[type="text"] {
 
 /* ---------- Bloque 2: ejercicio ---------- */
 .b2-stage { cursor: default; }
+.b2-fixation.cross { background: transparent; border-radius: 0; box-shadow: none; }
+.b2-fixation.cross::before, .b2-fixation.cross::after {
+  content: ""; position: absolute; background: #111; left: 50%; top: 50%;
+  box-shadow: 0 0 0 0.25vmin rgba(255,255,255,0.9);
+}
+.b2-fixation.cross::before { width: 16%; height: 100%; transform: translate(-50%, -50%); }
+.b2-fixation.cross::after  { width: 100%; height: 16%; transform: translate(-50%, -50%); }
 .b2-fixation {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   border-radius: 50%; background: #111; z-index: 2; pointer-events: none;
@@ -593,7 +600,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.2</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.3</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -690,6 +697,19 @@ button.link {
           <label class="field">
             <span>Tamaño del estímulo: <output id="out-stim-size">4.0</output>%</span>
             <input type="range" id="cfg-stim-size" min="1" max="12" step="0.5" value="4" />
+          </label>
+
+          <label class="field">
+            <span>Área de aparición, desde el centro: <output id="out-rad-min">0</output>%</span>
+            <input type="range" id="cfg-rad-min" min="0" max="85" step="5" value="0" />
+          </label>
+
+          <label class="field">
+            <span>Área de aparición, hasta la periferia: <output id="out-rad-max">100</output>%</span>
+            <input type="range" id="cfg-rad-max" min="15" max="100" step="5" value="100" />
+            <small class="hint-text">Anillo de trabajo: 0 % es el punto de fijación y 100 % el extremo
+              de la pantalla. Se conserva siempre una anchura mínima del 15 % para que quepan todos
+              los estímulos.</small>
           </label>
         </fieldset>
 
@@ -934,6 +954,7 @@ button.link {
             <select id="b2-mode">
               <option value="letter-search">Localizar letra (instrucción por voz)</option>
               <option value="word-sequence">Formar palabra (letra a letra)</option>
+              <option value="voice-letter">Decir la letra en voz alta (micrófono)</option>
             </select></label>
           <label class="field"><span>Nivel predefinido</span>
             <select id="b2-preset">
@@ -978,6 +999,24 @@ button.link {
             <small class="hint-text">Solo protege el punto de fijación: las letras empiezan a aparecer desde cerca del centro y crecen hacia la periferia.</small></label>
         </fieldset>
 
+        <fieldset id="b2-fs-voice">
+          <legend>Decir la letra en voz alta (micrófono)</legend>
+          <label class="field"><span>Tamaño de la letra: <output id="b2-out-vsize">8.0</output>%</span>
+            <input type="range" id="b2-voice-size" min="2" max="20" step="0.5" value="8" /></label>
+          <label class="field"><span>Tiempo visible de la letra: <output id="b2-out-vshow">0</output> s</span>
+            <input type="range" id="b2-voice-show" min="0" max="20" step="1" value="0" />
+            <small class="hint-text">0 = la letra permanece visible hasta que respondas.</small></label>
+          <label class="field"><span>Tiempo máximo de respuesta: <output id="b2-out-vlimit">15</output> s</span>
+            <input type="range" id="b2-voice-limit" min="0" max="60" step="1" value="15" />
+            <small class="hint-text">0 = sin límite. Al agotarse se registra como «sin respuesta» y se pasa a la siguiente letra.</small></label>
+          <div class="review-actions">
+            <button type="button" id="b2-mic-test" class="ghost">🎤 Comprobar micrófono</button>
+          </div>
+          <small class="hint-text" id="b2-mic-warn"></small>
+          <small class="hint-text">El navegador pedirá permiso para usar el micrófono. Si no hay
+            reconocimiento de voz disponible, podrás responder pulsando la letra en el teclado.</small>
+        </fieldset>
+
         <fieldset>
           <legend>Voz e instrucciones</legend>
           <label class="field"><span>Voz</span>
@@ -992,7 +1031,7 @@ button.link {
           <div id="b2-voice-warn" class="hint-text"></div>
         </fieldset>
 
-        <fieldset>
+        <fieldset id="b2-fs-words">
           <legend>Palabras (modalidad Formar palabra)</legend>
           <label class="field"><span>Longitud de palabra: <output id="b2-out-wlen">3–5</output> letras</span>
             <input type="range" id="b2-wmin" min="3" max="6" value="3" />
@@ -1091,6 +1130,7 @@ button.link {
       <div class="heat-toggle" id="b2-hist-mode">
         <button type="button" class="seg active" data-mode="letter-search">Localizar letra</button>
         <button type="button" class="seg" data-mode="word-sequence">Formar palabra</button>
+        <button type="button" class="seg" data-mode="voice-letter">Decir la letra</button>
       </div>
       <div id="b2-history-summary" class="history-summary"></div>
       <h3>Evolución del tiempo medio de respuesta</h3>
@@ -1154,7 +1194,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.2";
+  const APP_VERSION = "5.3";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -1380,40 +1420,83 @@ button.link {
     return clamp(0.11 * Math.min(window.innerWidth, window.innerHeight), 56, 120);
   }
 
-  function generatePositions(count, stimSizePct, adaptive) {
+  // Anchura mínima del anillo de trabajo, en % del radio máximo. Garantiza
+  // que siempre quede superficie suficiente para colocar los estímulos.
+  const RAD_MIN_SPAN = 15;
+
+  // Normaliza el rango radial elegido en la configuración.
+  function radialRange(cfg) {
+    let lo = clamp(cfg && cfg.radMin != null ? cfg.radMin : 0, 0, 100);
+    let hi = clamp(cfg && cfg.radMax != null ? cfg.radMax : 100, 0, 100);
+    if (hi < lo) { const s = lo; lo = hi; hi = s; }
+    if (hi - lo < RAD_MIN_SPAN) {                 // asegurar la franja mínima
+      hi = Math.min(100, lo + RAD_MIN_SPAN);
+      if (hi - lo < RAD_MIN_SPAN) lo = Math.max(0, hi - RAD_MIN_SPAN);
+    }
+    return { lo: lo, hi: hi };
+  }
+
+  function generatePositions(count, stimSizePct, adaptive, cfg) {
     const positions = [];
     // Margen por eje: deja fuera la banda perimetral (para que la franja
     // "No la veo" nunca tape un estímulo) más el radio del propio estímulo.
     const fpx = frameThicknessPx();
-    const marginX = stimSizePct + (fpx / window.innerWidth) * 100;
-    const marginY = stimSizePct + (fpx / window.innerHeight) * 100;
+    const W = window.innerWidth, H = window.innerHeight;
+    const marginX = stimSizePct + (fpx / W) * 100;
+    const marginY = stimSizePct + (fpx / H) * 100;
     const minDist = stimSizePct * 1.6;
     const centerKeepout = 12 + stimSizePct;
     const weights = adaptive ? adaptiveWeights() : null;
 
+    // Anillo de aparición en píxeles reales (el radio debe ser circular en
+    // pantalla, no en unidades %, que están deformadas por el aspecto).
+    const rng = radialRange(cfg);
+    const rMaxPx = Math.hypot(W / 2 - (marginX / 100) * W, H / 2 - (marginY / 100) * H);
+    const rInPx = (rng.lo / 100) * rMaxPx;
+    const rOutPx = (rng.hi / 100) * rMaxPx;
+    const radiusPx = (x, y) => Math.hypot((x - 50) / 100 * W, (y - 50) / 100 * H);
+    // Muestreo polar uniforme por superficie dentro del anillo.
+    const inAnnulus = () => {
+      const ang = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(rInPx * rInPx + Math.random() * (rOutPx * rOutPx - rInPx * rInPx));
+      return { x: 50 + (Math.cos(ang) * r) / W * 100, y: 50 + (Math.sin(ang) * r) / H * 100 };
+    };
+    const insideBounds = (p) => p.x >= marginX && p.x <= 100 - marginX &&
+                                p.y >= marginY && p.y <= 100 - marginY;
+
     for (let i = 0; i < count; i++) {
       let placed = null;
-      for (let attempt = 0; attempt < 400; attempt++) {
+      for (let attempt = 0; attempt < 500; attempt++) {
         let x, y;
-        if (weights) {
+        // Con refuerzo adaptativo se sortea primero por zonas con más fallos;
+        // si esa zona queda fuera del anillo elegido, se recurre al anillo.
+        if (weights && attempt < 250) {
           const cell = weightedPick(weights);
           const cx = cell % GRID, cy = Math.floor(cell / GRID);
           x = ((cx + Math.random()) / GRID) * 100;
           y = ((cy + Math.random()) / GRID) * 100;
         } else {
-          x = Math.random() * 100; y = Math.random() * 100;
+          const p = inAnnulus(); x = p.x; y = p.y;
         }
-        x = clamp(x, marginX, 100 - marginX);
-        y = clamp(y, marginY, 100 - marginY);
+        if (!insideBounds({ x: x, y: y })) continue;
+        const r = radiusPx(x, y);
+        if (r < rInPx || r > rOutPx) continue;           // fuera del anillo elegido
         if (Math.hypot(x - 50, y - 50) < centerKeepout) continue;
         if (positions.some((p) => Math.hypot(p.x - x, p.y - y) < minDist)) continue;
         placed = { x, y }; break;
       }
       if (!placed) {
-        placed = {
-          x: clamp(Math.random() * 100, marginX, 100 - marginX),
-          y: clamp(Math.random() * 100, marginY, 100 - marginY),
-        };
+        // Último recurso: cualquier punto del anillo, admitiendo cercanía.
+        for (let k = 0; k < 300 && !placed; k++) {
+          const p = inAnnulus();
+          if (insideBounds(p)) placed = p;
+        }
+        if (!placed) {
+          placed = {
+            x: clamp(50 + (rInPx + rOutPx) / 2 / W * 100, marginX, 100 - marginX),
+            y: clamp(50, marginY, 100 - marginY),
+          };
+        }
       }
       positions.push(placed);
     }
@@ -1535,7 +1618,7 @@ button.link {
     fitStage();
 
     const config = pendingCfg, mode = pendingMode;
-    const positions = generatePositions(config.count, config.stimSize, config.adaptive);
+    const positions = generatePositions(config.count, config.stimSize, config.adaptive, config);
     session = {
       startedAt: Date.now(),
       config, mode,
@@ -2290,6 +2373,8 @@ button.link {
       adaptive: $("#cfg-adaptive").checked,
       camera: $("#cfg-camera").checked,
       screenDiag: parseFloat($("#cfg-screen-diag").value),
+      radMin: parseFloat($("#cfg-rad-min").value),
+      radMax: parseFloat($("#cfg-rad-max").value),
     };
   }
 
@@ -2343,6 +2428,8 @@ button.link {
     set("#cfg-adaptive", c.adaptive);
     set("#cfg-camera", c.camera);
     set("#cfg-screen-diag", c.screenDiag);
+    set("#cfg-rad-min", c.radMin);
+    set("#cfg-rad-max", c.radMax);
   }
 
   function toleranceLabel(v) {
@@ -2547,8 +2634,17 @@ button.link {
   //  SpeechManager: síntesis de voz en español con alternativa escrita
   // =====================================================================
   function speechAvailable() {
-    return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+    if (!(window.speechSynthesis && window.SpeechSynthesisUtterance)) return false;
+    // Un motor presente pero SIN ninguna voz instalada no llega a sonar: se
+    // trata como no disponible para que se muestre la instrucción escrita.
+    try {
+      const vs = speechSynthesis.getVoices();
+      if (vs && vs.length === 0 && voicesLoaded) return false;
+    } catch (e) { /* si no se puede consultar, se intenta hablar */ }
+    return true;
   }
+  // Se marca cuando el navegador ya ha entregado su lista de voces.
+  let voicesLoaded = false;
   function spanishVoices() {
     try {
       return (speechSynthesis.getVoices() || [])
@@ -2565,6 +2661,10 @@ button.link {
   }
   // Rellena el selector de voces españolas (las voces cargan de forma asíncrona).
   function populateVoices() {
+    try {
+      const vs = window.speechSynthesis ? speechSynthesis.getVoices() : null;
+      if (vs && vs.length) voicesLoaded = true;
+    } catch (e) { /* nada */ }
     const sel = $("#b2-voice");
     if (!sel || !speechAvailable()) return;
     const prev = sel.value;
@@ -2617,6 +2717,109 @@ button.link {
   }
   // Palabras: se pronuncian en el idioma del contenido del ejercicio.
   function speakWord(w) { return speak(w.toLowerCase(), exTts()); }
+
+  // =====================================================================
+  //  Reconocimiento de voz (modalidad «Decir la letra en voz alta»)
+  // =====================================================================
+  // Nombres hablados admitidos. En español la "b" y la "v" suenan igual, así
+  // que las formas ambiguas se resuelven a favor de la letra pedida: no se
+  // penaliza al usuario por una distinción que el propio idioma no hace.
+  const VOICE_ALIASES = {
+    "a": "A", "be": "B", "be larga": "B", "be alta": "B", "be grande": "B",
+    "ce": "C", "de": "D", "e": "E", "efe": "F", "ge": "G", "hache": "H",
+    "i": "I", "i latina": "I", "jota": "J", "ka": "K", "ele": "L", "eme": "M",
+    "ene": "N", "eñe": "Ñ", "enie": "Ñ", "o": "O", "pe": "P", "cu": "Q", "ku": "Q",
+    "erre": "R", "ere": "R", "ese": "S", "te": "T", "u": "U",
+    "uve": "V", "ve": "V", "ve corta": "V", "ve baja": "V", "ve chica": "V",
+    "uve doble": "W", "doble uve": "W", "doble ve": "W", "doble u": "W",
+    "equis": "X", "i griega": "Y", "ye": "Y", "zeta": "Z", "ceta": "Z",
+  };
+  const VOICE_AMBIG = { "be": "BV", "ve": "BV", "uve": "BV" };
+
+  function speechRecCtor() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  }
+  function micSupported() { return !!speechRecCtor(); }
+
+  // Traduce lo escuchado a una letra. `target` solo se usa para desempatar
+  // homófonos; nunca convierte una letra distinta en acierto.
+  function b2VoiceMatch(transcript, target) {
+    if (!transcript) return null;
+    let sTxt = transcript.toLowerCase().trim();
+    sTxt = sTxt.replace(/[.,;:!?¡¿"']/g, " ").replace(/\s+/g, " ").trim();
+    sTxt = sTxt.replace(/^(la\s+)?letra\s+/, "").trim();
+    if (!sTxt) return null;
+    const tryToken = (tok) => {
+      if (!tok) return null;
+      if (VOICE_AMBIG[tok] && target && VOICE_AMBIG[tok].indexOf(target) >= 0) return target;
+      if (VOICE_ALIASES[tok]) return VOICE_ALIASES[tok];
+      if (tok.length === 1) return normLetter(tok.toUpperCase());
+      return null;
+    };
+    const whole = tryToken(sTxt);
+    if (whole) return whole;
+    const parts = sTxt.split(" ");
+    for (let i = parts.length - 1; i >= 0; i--) {          // la última suele ser la respuesta
+      const two = i > 0 ? parts[i - 1] + " " + parts[i] : null;
+      const m = tryToken(two) || tryToken(parts[i]);
+      if (m) return m;
+    }
+    return null;
+  }
+
+  let b2Rec = null, b2RecWanted = false;
+  function b2RecStart() {
+    const Ctor = speechRecCtor();
+    if (!Ctor) return false;
+    b2RecWanted = true;
+    if (b2Rec) return true;
+    try {
+      const r = new Ctor();
+      r.lang = exTts();
+      r.continuous = true;
+      r.interimResults = true;
+      r.maxAlternatives = 5;
+      r.onresult = function (ev) {
+        if (!b2 || b2.state !== "running" || !b2.cur || b2.cur.answered) return;
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const res = ev.results[i];
+          for (let k = 0; k < res.length; k++) {
+            const heard = res[k].transcript;
+            const letter = b2VoiceMatch(heard, b2.cur.target);
+            if (letter) { b2VoiceAnswer(letter, heard.trim()); return; }
+          }
+        }
+      };
+      r.onerror = function (ev) {
+        const err = ev && ev.error;
+        if (err === "not-allowed" || err === "service-not-allowed") {
+          b2RecWanted = false;
+          $("#b2-hint").textContent = t("ex.micDenied");
+        }
+      };
+      r.onend = function () {
+        // Chrome corta la escucha tras un silencio: se reanuda sola.
+        if (b2RecWanted && b2Rec) { try { b2Rec.start(); } catch (e) { /* ya activa */ } }
+      };
+      b2Rec = r;
+      r.start();
+      return true;
+    } catch (e) { b2Rec = null; return false; }
+  }
+  function b2RecStop() {
+    b2RecWanted = false;
+    if (!b2Rec) return;
+    try { b2Rec.onend = null; b2Rec.onresult = null; b2Rec.stop(); } catch (e) { /* nada */ }
+    b2Rec = null;
+  }
+  // Solicitud explícita de permiso antes de arrancar la sesión.
+  function requestMic(onDone) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { onDone(micSupported()); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      try { stream.getTracks().forEach(function (tr) { tr.stop(); }); } catch (e) { /* nada */ }
+      onDone(true);
+    }, function () { onDone(false); });
+  }
 
   // =====================================================================
   //  Block2Controller: ejercicio de letras
@@ -2736,6 +2939,9 @@ button.link {
       skipDelay: parseInt($("#b2-skip-delay").value, 10),
       sound: $("#b2-sound").checked,
       vibrate: $("#b2-vibrate").checked,
+      voiceSize: parseFloat($("#b2-voice-size").value),
+      voiceShow: parseFloat($("#b2-voice-show").value),
+      voiceLimit: parseFloat($("#b2-voice-limit").value),
     };
   }
   function b2ApplyConfig(c) {
@@ -2755,6 +2961,8 @@ button.link {
     set("#b2-wmin", c.wmin); set("#b2-wmax", c.wmax); set("#b2-pause", c.pause);
     set("#b2-skip-delay", c.skipDelay);
     set("#b2-sound", c.sound); set("#b2-vibrate", c.vibrate);
+    set("#b2-voice-size", c.voiceSize); set("#b2-voice-show", c.voiceShow);
+    set("#b2-voice-limit", c.voiceLimit);
   }
   const B2_PRESETS = {
     easy: { visible: 10, count: 6, minSize: 3.5, maxSize: 9, exp: 1, excl: 10, rate: 0.8, pause: 2, skipDelay: 9, reshuffle: false },
@@ -2831,8 +3039,11 @@ button.link {
         const y = cy + Math.sin(ang) * r;
         const sizePct = sizeAt(r);
         const fpx = (sizePct / 100) * vmin;
-        if (x - fpx / 2 < margin || x + fpx / 2 > W - margin) continue;   // fuera de banda
-        if (y - fpx / 2 < margin || y + fpx / 2 > H - margin) continue;
+        // La caja real incluye el relleno de .b2-letter (0.2em por lado):
+        // se usa para que la zona pulsable no se meta bajo la banda.
+        const box = fpx * 1.4;
+        if (x - box / 2 < margin || x + box / 2 > W - margin) continue;   // fuera de banda
+        if (y - box / 2 < margin || y + box / 2 > H - margin) continue;
         if (y < 64 && x > W - 420) continue;      // esquina de controles
         if (r < exclPx + fpx / 2) continue;       // no invadir la fijación
         const factor = tries < 350 ? 0.66 : 0.5;  // relajar si cuesta colocar
@@ -2842,8 +3053,9 @@ button.link {
       }
       if (!ok) {  // último recurso: cualquier hueco válido dentro del área útil
         for (let tries = 0; tries < 400 && !ok; tries++) {
-          const x = margin + Math.random() * (W - 2 * margin);
-          const y = margin + Math.random() * (H - 2 * margin);
+          const sizeGuess = (cfg.maxSize / 100) * vmin * 0.7;
+          const x = margin + sizeGuess + Math.random() * Math.max(1, W - 2 * (margin + sizeGuess));
+          const y = margin + sizeGuess + Math.random() * Math.max(1, H - 2 * (margin + sizeGuess));
           const r = Math.hypot(x - cx, y - cy);
           if (r < exclPx + 4) continue;
           const sizePct = sizeAt(r);
@@ -2892,12 +3104,17 @@ button.link {
       pendingNext: false,
       letterSet: b2BuildLetterSet(cfg, needed), layout: {},
     };
-    if (cfg.mode === "letter-search") {
-      let seq = [];
-      while (seq.length < cfg.count) seq = seq.concat(shuffleArr(b2.letterSet.slice()));
-      b2.targets = seq.slice(0, cfg.count);
-    } else {
+    if (cfg.mode === "word-sequence") {
       b2.targets = targets;
+    } else {
+      // «Localizar letra» usa el conjunto visible; «Decir la letra» recorre
+      // todo el alfabeto del idioma del ejercicio.
+      const pool = cfg.mode === "voice-letter"
+        ? exAlphabet().filter((l) => l !== "Ñ" || cfg.enye)
+        : b2.letterSet.slice();
+      let seq = [];
+      while (seq.length < cfg.count) seq = seq.concat(shuffleArr(pool.slice()));
+      b2.targets = seq.slice(0, cfg.count);
     }
 
     // Punto central de fijación (círculo, alto contraste, no seleccionable).
@@ -2906,6 +3123,11 @@ button.link {
     fix.style.height = cfg.centerSize + "vmin";
 
     $("#b2-word-restart").classList.toggle("hidden", cfg.mode !== "word-sequence");
+    // En la modalidad por voz no hay instrucción que repetir y la figura de
+    // fijación es una CRUZ central, como pidió el uso clínico del ejercicio.
+    const isVoice = cfg.mode === "voice-letter";
+    $("#b2-repeat").classList.toggle("hidden", isVoice);
+    fix.classList.toggle("cross", isVoice);
     // Texto de la banda perimetral según la modalidad.
     const skipTxt = cfg.mode === "word-sequence" ? t("ex.bandWord") : t("ex.bandFind");
     document.querySelectorAll("#b2-skip-frame .b2-skip-txt").forEach((el) => { el.textContent = skipTxt; });
@@ -2938,9 +3160,10 @@ button.link {
     $("#b2-rotate-gate").classList.add("hidden");
     lockCurrentOrientation();
     b2Fit();
-    b2Layout();
+    if (b2.config.mode !== "voice-letter") b2Layout();
     runCountdown(function () {
       b2.state = "running";
+      if (b2.config.mode === "voice-letter") b2RecStart();
       b2NextTarget();
     }, "#b2-countdown");
   }
@@ -2999,8 +3222,17 @@ button.link {
     b2ClearTimer();
     if (!b2) return;
     if (b2.ti >= b2.targets.length) { b2End("completada"); return; }
-    if (b2.config.reshuffle && b2.ti > 0) b2Layout();
+    if (b2.config.reshuffle && b2.ti > 0 && b2.config.mode !== "voice-letter") b2Layout();
     const t = b2.targets[b2.ti];
+    if (b2.config.mode === "voice-letter") {
+      b2.cur = { target: t, errors: [], t0: b2Now(), audioRepeats: 0, answered: false };
+      b2.state = "running";
+      $("#b2-progress").textContent = (b2.ti + 1) + " / " + b2.targets.length;
+      $("#b2-hint").textContent = t2("ex.voiceHint");
+      b2VoiceShow();
+      b2ArmSkipFrame();
+      return;
+    }
     if (b2.config.mode === "letter-search") {
       b2.cur = { target: t, errors: [], t0: b2Now(), audioRepeats: 0 };
     } else {
@@ -3013,6 +3245,104 @@ button.link {
     b2ArmSkipFrame();
   }
 
+  // ---- Modalidad por voz: una sola letra, en posición aleatoria ----
+  let b2VoiceHideTimer = null, b2VoiceLimitTimer = null;
+  function b2ClearVoiceTimers() {
+    if (b2VoiceHideTimer) { clearTimeout(b2VoiceHideTimer); b2VoiceHideTimer = null; }
+    if (b2VoiceLimitTimer) { clearTimeout(b2VoiceLimitTimer); b2VoiceLimitTimer = null; }
+  }
+
+  function b2VoiceShow() {
+    const stage = $("#b2-stage");
+    stage.querySelectorAll(".b2-letter").forEach((e) => e.remove());
+    b2ClearVoiceTimers();
+    const cfg = b2.config;
+    const W = window.innerWidth, H = window.innerHeight, vmin = Math.min(W, H);
+    const box = (cfg.voiceSize / 100) * vmin * 1.4;
+    const margin = b2FramePx() + 4 + box / 2;
+    const exclPx = (cfg.excl / 100) * vmin;
+    const cx = W / 2, cy = H / 2;
+    let x = cx + exclPx + box, y = cy;
+    for (let i = 0; i < 500; i++) {
+      const px = margin + Math.random() * Math.max(1, W - 2 * margin);
+      const py = margin + Math.random() * Math.max(1, H - 2 * margin);
+      if (Math.hypot(px - cx, py - cy) < exclPx + box / 2) continue;   // no tapar la cruz
+      if (py < 64 && px > W - 420) continue;                           // esquina de controles
+      x = px; y = py; break;
+    }
+    const el = document.createElement("div");
+    el.className = "b2-letter";
+    el.dataset.letter = b2.cur.target;
+    el.textContent = b2DisplayChar(b2.cur.target, cfg);
+    el.style.left = (x / W * 100) + "%";
+    el.style.top = (y / H * 100) + "%";
+    el.style.fontSize = cfg.voiceSize + "vmin";
+    stage.appendChild(el);
+    b2.layout = {};
+    b2.layout[b2.cur.target] = { x: x / W * 100, y: y / H * 100, size: cfg.voiceSize };
+    b2.cur.tx = x / W * 100; b2.cur.ty = y / H * 100;
+    b2.cur.t0 = b2Now();
+    if (cfg.voiceShow > 0) {
+      b2VoiceHideTimer = setTimeout(function () { el.style.visibility = "hidden"; }, cfg.voiceShow * 1000);
+    }
+    if (cfg.voiceLimit > 0) {
+      b2VoiceLimitTimer = setTimeout(b2VoiceTimeout, cfg.voiceLimit * 1000);
+    }
+  }
+
+  // Respuesta del usuario (voz reconocida o tecla). Se avanza SIEMPRE, tanto
+  // si acierta como si falla, tal y como exige el ejercicio.
+  function b2VoiceAnswer(said, heard) {
+    if (!b2 || b2.state !== "running" || !b2.cur || b2.cur.answered) return;
+    const cur = b2.cur;
+    cur.answered = true;
+    b2ClearVoiceTimers();
+    const ok = said === cur.target;
+    const el = $("#b2-stage").querySelector(".b2-letter");
+    if (el) {
+      el.style.visibility = "visible";        // se muestra siempre el resultado
+      el.classList.add(ok ? "flash-ok" : "flash-fail");
+    }
+    if (ok) { sndOk(); vibrate(35); } else { sndFail(); vibrate([0, 90, 60, 90]); }
+    $("#b2-hint").textContent = ok
+      ? t2("ex.voiceOk", cur.target)
+      : t2("ex.voiceFail", said, cur.target);
+    b2.attempts.push({
+      target: cur.target, correct: ok, omitted: false,
+      said: said, heard: heard || "",
+      errorsBefore: ok ? 0 : 1,
+      errors: ok ? [] : [{ letter: said, x: cur.tx, y: cur.ty }],
+      rt: Math.round(b2Now() - cur.t0),
+      tx: cur.tx, ty: cur.ty, audioRepeats: 0, timestamp: Date.now(),
+    });
+    cur.recorded = true;
+    b2ClearSkipTimer(); b2HideSkipFrame();
+    b2.ti++; b2.state = "wait";
+    b2Timer = setTimeout(b2NextTarget, Math.max(0.4, b2.config.pause) * 1000);
+  }
+
+  function b2VoiceTimeout() {
+    if (!b2 || b2.state !== "running" || !b2.cur || b2.cur.answered) return;
+    const cur = b2.cur;
+    cur.answered = true;
+    b2ClearVoiceTimers();
+    const el = $("#b2-stage").querySelector(".b2-letter");
+    if (el) { el.style.visibility = "visible"; el.classList.add("flash-fail"); }
+    sndFail(); vibrate([0, 90, 60, 90]);
+    $("#b2-hint").textContent = t2("ex.voiceNone", cur.target);
+    b2.attempts.push({
+      target: cur.target, correct: false, omitted: true,
+      said: null, heard: "",
+      errorsBefore: 0, errors: [],
+      rt: Math.round(b2Now() - cur.t0),
+      tx: cur.tx, ty: cur.ty, audioRepeats: 0, timestamp: Date.now(),
+    });
+    cur.recorded = true;
+    b2ClearSkipTimer(); b2HideSkipFrame();
+    b2.ti++; b2.state = "wait";
+    b2Timer = setTimeout(b2NextTarget, Math.max(0.4, b2.config.pause) * 1000);
+  }
+
   function b2FlashLetter(letter, ok) {
     const el = $("#b2-stage").querySelector('.b2-letter[data-letter="' + letter + '"]');
     if (!el) return;
@@ -3023,8 +3353,12 @@ button.link {
 
   function onB2Tap(e) {
     if (!b2 || b2.state !== "running") return;
-    // Toque en la zona de la banda (visible): lógica de salto por doble toque.
-    if (!$("#b2-skip-frame").classList.contains("hidden") &&
+    const el = e.target.closest(".b2-letter");
+    // La letra SIEMPRE tiene prioridad sobre la banda: su zona pulsable
+    // (con relleno) puede solaparse unos píxeles con la franja perimetral y,
+    // al comprobarse antes la banda, la pulsación se perdía; el segundo
+    // intento se leía como doble toque y saltaba la palabra entera.
+    if (!el && !$("#b2-skip-frame").classList.contains("hidden") &&
         inBandArea(e.clientX, e.clientY, b2FramePx())) {
       e.preventDefault();
       const now = Date.now();
@@ -3032,13 +3366,35 @@ button.link {
       else { b2LastSkipTap = now; }
       return;
     }
-    const el = e.target.closest(".b2-letter");
-    if (!el) return;
+    if (!el) {
+      // Toque que no alcanza ninguna letra: también es un fallo de
+      // localización y debe quedar registrado (antes se perdía y por eso
+      // la precisión salía inflada y el mapa de errores vacío).
+      if (!e.target.closest("#b2-fixation, #b2-written-target, #b2-countdown")) {
+        b2RecordMiss(e.clientX, e.clientY);
+      }
+      return;
+    }
+    if (b2.config.mode === "voice-letter") return;   // aquí se responde hablando
     e.preventDefault();
     const letter = el.dataset.letter;
     const pos = b2.layout[letter] || { x: 50, y: 50 };
     if (b2.config.mode === "letter-search") b2TapLetter(letter, pos);
     else b2TapWord(letter, pos);
+  }
+
+  // Registro de un toque en vacío como error, con su posición normalizada.
+  function b2RecordMiss(px, py) {
+    const cur = b2.cur;
+    if (!cur) return;
+    const err = {
+      letter: null, miss: true,
+      x: px / window.innerWidth * 100,
+      y: py / window.innerHeight * 100,
+    };
+    if (b2.config.mode === "word-sequence") err.atPos = cur.pos;
+    cur.errors.push(err);
+    sndFail(); vibrate([0, 90, 60, 90]);
   }
 
   function b2TapLetter(letter, pos) {
@@ -3052,6 +3408,7 @@ button.link {
         tx: tpos.x, ty: tpos.y, audioRepeats: cur.audioRepeats,
         timestamp: Date.now(),
       });
+      cur.recorded = true;
       b2FlashLetter(letter, true); sndOk(); vibrate(35);
       b2ClearSkipTimer(); b2HideSkipFrame();
       b2.ti++; b2.state = "wait";
@@ -3085,6 +3442,7 @@ button.link {
           audioRepeats: cur.audioRepeats, restarted: cur.restarted,
           timestamp: Date.now(),
         });
+        cur.recorded = true;
         b2ClearSkipTimer(); b2HideSkipFrame();
         b2.ti++; b2.state = "wait";
         $("#b2-hint").textContent = t("ex.fixHint");
@@ -3096,28 +3454,41 @@ button.link {
     }
   }
 
-  // Omisión / palabra saltada.
-  function b2Skip() {
-    if (!b2 || b2.state !== "running") return;
+  // Registro de un objetivo que no llega a completarse: por salto voluntario
+  // (banda «No la veo») o porque la sesión termina en mitad del intento.
+  // Guarda SIEMPRE la posición de la letra que no se encontró, para que
+  // aparezca en el mapa de errores y en los hemicampos.
+  function b2RecordUnfinished(interrupted) {
     const cur = b2.cur;
-    if (b2.config.mode === "letter-search") {
-      const tpos = b2.layout[cur.target] || { x: 50, y: 50 };
+    if (!cur || cur.recorded) return;
+    cur.recorded = true;
+    if (b2.config.mode !== "word-sequence") {
+      const tpos = b2.layout[cur.target] || { x: cur.tx != null ? cur.tx : 50, y: cur.ty != null ? cur.ty : 50 };
       b2.attempts.push({
-        target: cur.target, correct: false, omitted: true,
+        target: cur.target, correct: false, omitted: true, interrupted: !!interrupted,
         errorsBefore: cur.errors.length, errors: cur.errors,
         rt: Math.round(b2Now() - cur.t0), tx: tpos.x, ty: tpos.y,
         audioRepeats: cur.audioRepeats, timestamp: Date.now(),
       });
     } else {
+      const expected = normLetter(cur.word.charAt(cur.pos) || "");
+      const mpos = b2.layout[expected];
       b2.attempts.push({
-        word: cur.word, completed: false, skipped: true,
+        word: cur.word, completed: false, skipped: true, interrupted: !!interrupted,
         errors: cur.errors, errorCount: cur.errors.length,
         presses: cur.presses,
+        missed: mpos ? { letter: expected, x: mpos.x, y: mpos.y } : null,
         firstRt: cur.firstRt, totalMs: Math.round(b2Now() - cur.t0),
         times: cur.times, letters: cur.word.length, lettersDone: cur.pos,
         audioRepeats: cur.audioRepeats, restarted: cur.restarted, timestamp: Date.now(),
       });
     }
+  }
+
+  // Omisión / palabra saltada.
+  function b2Skip() {
+    if (!b2 || b2.state !== "running") return;
+    b2RecordUnfinished(false);
     sndFail(); vibrate([0, 90, 60, 90]);
     b2ClearSkipTimer(); b2HideSkipFrame();
     b2.ti++;
@@ -3136,6 +3507,7 @@ button.link {
   function b2Pause() {
     if (!b2 || (b2.state !== "running" && b2.state !== "wait")) return;
     if (b2.state === "wait") { b2ClearTimer(); b2.pendingNext = true; }
+    b2ClearVoiceTimers(); b2RecStop();
     b2ClearSkipTimer(); b2HideSkipFrame();
     b2.state = "paused"; b2.pauseStart = performance.now();
     try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { /* nada */ }
@@ -3149,6 +3521,16 @@ button.link {
       b2.pendingNext = false;
       b2.state = "wait";
       b2Timer = setTimeout(b2NextTarget, 500);
+    } else if (b2.config.mode === "voice-letter") {
+      b2.state = "running";
+      b2RecStart();
+      if (b2.cur && !b2.cur.answered) {          // reanudar el tiempo de respuesta
+        b2.cur.t0 = b2Now();
+        if (b2.config.voiceLimit > 0) {
+          b2VoiceLimitTimer = setTimeout(b2VoiceTimeout, b2.config.voiceLimit * 1000);
+        }
+      }
+      b2ArmSkipFrame();
     } else {                           // estaba buscando: repetir la instrucción
       b2.state = "running";
       b2Announce(true);
@@ -3158,6 +3540,13 @@ button.link {
 
   function onB2Key(e) {
     if (e.code === "Escape") { e.preventDefault(); b2Finish(); }
+    // En la modalidad por voz se admite también responder con el teclado,
+    // para quien no tenga micrófono o reconocimiento disponible.
+    if (b2 && b2.config.mode === "voice-letter" && b2.state === "running" &&
+        e.key && e.key.length === 1 && /[^\s\d]/.test(e.key)) {
+      const letter = normLetter(e.key.toUpperCase());
+      if (letter) { e.preventDefault(); b2VoiceAnswer(letter, t2("ex.byKeyboard")); }
+    }
   }
   function b2Finish() {
     if (!b2) return;
@@ -3168,6 +3557,8 @@ button.link {
 
   function b2Cleanup() {
     b2ClearTimer(); clearCdTimer(); b2ClearSkipTimer();
+    b2ClearVoiceTimers(); b2RecStop();
+    $("#b2-fixation").classList.remove("cross");
     b2HideSkipFrame();
     $("#b2-countdown").classList.add("hidden");
     $("#b2-pause-overlay").classList.add("hidden");
@@ -3183,6 +3574,10 @@ button.link {
   }
 
   function b2End(status) {
+    // Un objetivo a medias al finalizar no se pierde: queda como incompleto.
+    if (b2.cur && !b2.cur.recorded && b2.begun) {
+      try { b2RecordUnfinished(true); } catch (e) { /* nada que registrar */ }
+    }
     b2Cleanup();
     pendingB2 = {
       id: b2.startedAt, date: new Date(b2.startedAt).toISOString(),
@@ -3226,8 +3621,18 @@ button.link {
       acc.hits = comp.length;
       acc.errors = at.reduce((s, a) => s + (a.errorCount || 0), 0);
       acc.omissions = at.filter((a) => a.skipped).length;
-      const okPresses = at.reduce((s, a) => s + (a.completed ? a.letters : (a.lettersDone || 0)), 0);
-      acc.accuracy = (okPresses + acc.errors) ? okPresses / (okPresses + acc.errors) : 0;
+      // Precisión REAL por letra: localizadas sobre TODAS las pedidas, y cada
+      // selección errónea penaliza. Antes solo se comparaban las pulsaciones
+      // correctas entre sí, por lo que una sesión sin ninguna palabra
+      // terminada podía mostrar un 100 %.
+      const asked = at.reduce((s, a) => s + (a.letters || (a.word || "").length), 0);
+      const found = at.reduce((s, a) => s + (a.presses
+        ? a.presses.length
+        : (a.completed ? (a.letters || 0) : (a.lettersDone || 0))), 0);
+      acc.lettersAsked = asked;
+      acc.lettersFound = found;
+      acc.notFound = Math.max(0, asked - found);
+      acc.accuracy = (asked + acc.errors) ? found / (asked + acc.errors) : 0;
       acc.meanRt = comp.length ? Math.round(comp.reduce((s, a) => s + a.totalMs, 0) / comp.length) : null;
       const allTimes = [];
       at.forEach((a) => { (a.times || []).forEach((t) => allTimes.push(t)); });
@@ -3241,9 +3646,14 @@ button.link {
           (p.y < 50 ? hemi.t : hemi.b).push(true);
         });
         (a.errors || []).forEach((e) => {
+          if (e.x == null) return;
           (e.x < 50 ? hemi.l : hemi.r).push(false);
           (e.y < 50 ? hemi.t : hemi.b).push(false);
         });
+        if (a.missed && a.missed.x != null) {      // letra que no se localizó
+          (a.missed.x < 50 ? hemi.l : hemi.r).push(false);
+          (a.missed.y < 50 ? hemi.t : hemi.b).push(false);
+        }
       });
     }
     const hAcc = (arr) => arr.length ? arr.filter(Boolean).length / arr.length : null;
@@ -3256,17 +3666,26 @@ button.link {
   function b2HeatPoints(rec) {
     const pts = [];
     (rec.attempts || []).forEach((a) => {
-      if (rec.modeId === "letter-search") {
+      if (rec.modeId !== "word-sequence") {
         if (a.tx != null) pts.push({ x: a.tx, y: a.ty, hit: a.correct && a.errorsBefore === 0 });
       }
       (a.presses || []).forEach((p) => pts.push({ x: p.x, y: p.y, hit: true }));
-      (a.errors || []).forEach((e) => pts.push({ x: e.x, y: e.y, hit: false }));
+      (a.errors || []).forEach((e) => {
+        if (e.x != null) pts.push({ x: e.x, y: e.y, hit: false });
+      });
+      // Letra que el usuario no llegó a localizar: es el fallo más
+      // informativo del mapa y antes no se dibujaba.
+      if (a.missed && a.missed.x != null) pts.push({ x: a.missed.x, y: a.missed.y, hit: false });
     });
     return pts;
   }
   function b2HeatAdapter(recs) { return recs.map((r) => ({ stimuli: b2HeatPoints(r) })); }
 
-  function modeLabel(m) { return m === "word-sequence" ? t("b2.modB") : t("b2.modA"); }
+  function modeLabel(m) {
+    if (m === "word-sequence") return t("b2.modB");
+    if (m === "voice-letter") return t("b2.modC");
+    return t("b2.modA");
+  }
 
   function b2RenderDashboard(el, rec) {
     const a = b2Aggregate(rec);
@@ -3288,6 +3707,7 @@ button.link {
       '<div class="stat-card"><div class="num">' + (a.meanRt != null ? (a.meanRt / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + (isWord ? t("st.meanWord") : t("st.meanTime")) + "</div></div>";
     if (isWord) {
       cards +=
+        '<div class="stat-card"><div class="num">' + (a.lettersFound || 0) + "/" + (a.lettersAsked || 0) + '</div><div class="lbl">' + t("st.lettersFound") + '</div></div>' +
         '<div class="stat-card"><div class="num">' + (a.meanLetter != null ? (a.meanLetter / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + t("st.meanLetter") + '</div></div>' +
         '<div class="stat-card"><div class="num">' + (a.meanFirst != null ? (a.meanFirst / 1000).toFixed(1) + "s" : "—") + '</div><div class="lbl">' + t("st.firstSel") + '</div></div>';
     }
@@ -3305,19 +3725,30 @@ button.link {
     const st = {};
     const ensure = (l) => (st[l] || (st[l] = { asked: 0, ok: 0, err: 0, rts: [], conf: {} }));
     recs.forEach((rec) => (rec.attempts || []).forEach((a) => {
-      if (rec.modeId === "letter-search") {
+      if (rec.modeId !== "word-sequence") {
         const s = ensure(a.target);
         s.asked++;
         if (a.correct && a.errorsBefore === 0) s.ok++;
         if (a.rt != null && a.correct) s.rts.push(a.rt);
-        (a.errors || []).forEach((e) => { s.err++; s.conf[e.letter] = (s.conf[e.letter] || 0) + 1; });
+        (a.errors || []).forEach((e) => {
+          s.err++; if (e.letter) s.conf[e.letter] = (s.conf[e.letter] || 0) + 1;
+        });
       } else {
         (a.word || "").split("").forEach((ch) => { ensure(normLetter(ch)).asked++; });
+        // Aciertos y tiempos por letra: antes no se contaban y la tabla
+        // mostraba 0 aciertos aunque el usuario acertase todas.
+        (a.presses || []).forEach((p, i) => {
+          const s = ensure(normLetter(p.letter));
+          s.ok++;
+          const tm = (a.times || [])[i];
+          if (tm != null) s.rts.push(tm);
+        });
         (a.errors || []).forEach((e) => {
           const target = normLetter((a.word || "").charAt(e.atPos || 0) || "?");
           const s = ensure(target);
-          s.err++; s.conf[e.letter] = (s.conf[e.letter] || 0) + 1;
+          s.err++; if (e.letter) s.conf[e.letter] = (s.conf[e.letter] || 0) + 1;
         });
+        if (a.missed && a.missed.letter) ensure(a.missed.letter).err++;   // no localizada
       }
     }));
     const rows = Object.keys(st).map((l) => {
@@ -3454,7 +3885,11 @@ button.link {
     ]];
     sessionsOf("block2").forEach((s) => {
       (s.attempts || []).forEach((a, i) => {
-        if (s.modeId === "letter-search") {
+        if (s.modeId === "voice-letter") {
+          rows.push([s.id, s.date, "decir-letra", s.status, i + 1, a.target,
+            a.omitted ? "sin_respuesta" : (a.correct ? "acierto" : "error"),
+            a.said || "", a.omitted ? 1 : 0, a.rt != null ? a.rt : "", "", 0]);
+        } else if (s.modeId === "letter-search") {
           rows.push([s.id, s.date, "localizar-letra", s.status, i + 1, a.target,
             a.correct ? (a.errorsBefore ? "acierto_con_errores" : "acierto") : "omitida",
             a.errorsBefore || 0, a.omitted ? 1 : 0, a.rt != null ? a.rt : "", "", a.audioRepeats || 0]);
@@ -3551,6 +3986,7 @@ button.link {
     "st.prec":"Precisión","st.precFirst":"Precisión (1.ᵉʳ intento)","st.precLetters":"Precisión de letras","st.hits":"Aciertos",
     "st.firstTry":"Aciertos a la primera","st.wordsDone":"Palabras completadas","st.notSeen":"No vistos","st.omissions":"Omisiones",
     "st.incomplete":"Incompletas","st.errors":"Errores","st.meanErr":"Error medio (radios)","st.meanTime":"Tiempo medio",
+    "st.lettersFound":"Letras localizadas","st.notFound":"Letras no localizadas",
     "st.meanWord":"Tiempo medio/palabra","st.meanLetter":"Tiempo medio/letra","st.firstSel":"Hasta 1.ª selección",
     "st.bias":"Sesgo del error","st.fieldLR":"Campo izq / der","st.fieldTB":"Campo sup / inf","st.duration":"Duración","st.audioReps":"Repeticiones de audio",
     "bias.center":"centrado","bias.up":"arriba","bias.down":"abajo","bias.left":"izquierda","bias.right":"derecha",
@@ -3563,7 +3999,16 @@ button.link {
     "h.selectSes":"Sesiones (selecciona una para ver su dashboard)","h.noneMode":"Aún no hay sesiones de esta modalidad.","h.none":"Aún no hay sesiones guardadas.",
     "d.back":"Volver al historial","d.exportSes":"Exportar sesión (JSON)","d.thisMap":"Esta sesión","d.accMap":"Acumulado hasta esta sesión",
     "g.unsaved":"Hay un resultado sin guardar. ¿Salir y descartarlo?",
-    "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.state":"estado","b2.tries":"intentos",
+    "b2.modA":"Localizar letra","b2.modB":"Formar palabra","b2.modC":"Decir la letra","b2.state":"estado","b2.tries":"intentos",
+    "ex.voiceHint":"Di en voz alta la letra que ves (o púlsala en el teclado)",
+    "ex.voiceOk":"✔ Correcto: {0}","ex.voiceFail":"✘ Has dicho {0} · era {1}","ex.voiceNone":"Sin respuesta · era {0}",
+    "ex.byKeyboard":"(teclado)",
+    "ex.micDenied":"⚠ Sin acceso al micrófono. Puedes responder pulsando la letra en el teclado.",
+    "ex.micNoSupport":"⚠ Este navegador no reconoce voz. Responde pulsando la letra en el teclado (Chrome sí lo admite).",
+    "ex.micAsking":"Solicitando permiso del micrófono…","ex.micOk":"✔ Micrófono disponible.",
+    "b2c.micLegend":"Decir la letra en voz alta (micrófono)","b2c.vsize":"Tamaño de la letra:",
+    "b2c.vshow":"Tiempo visible de la letra:","b2c.vlimit":"Tiempo máximo de respuesta:",
+    "b2c.micTest":"🎤 Comprobar micrófono",
   };
   const EN = {
     "app.name":"Visual Rehabilitation","nav.menu":"Menu","nav.switch":"Switch user","nav.cancel":"Cancel","lang.search":"Search language…","lang.partial":"partial",
@@ -3592,6 +4037,7 @@ button.link {
     "st.prec":"Accuracy","st.precFirst":"Accuracy (1st try)","st.precLetters":"Letter accuracy","st.hits":"Hits",
     "st.firstTry":"First-try hits","st.wordsDone":"Words completed","st.notSeen":"Not seen","st.omissions":"Omissions",
     "st.incomplete":"Incomplete","st.errors":"Errors","st.meanErr":"Mean error (radii)","st.meanTime":"Mean time",
+    "st.lettersFound":"Letters located","st.notFound":"Letters not located",
     "st.meanWord":"Mean time/word","st.meanLetter":"Mean time/letter","st.firstSel":"To 1st selection",
     "st.bias":"Error bias","st.fieldLR":"Left / right field","st.fieldTB":"Upper / lower field","st.duration":"Duration","st.audioReps":"Audio repeats",
     "bias.center":"centered","bias.up":"up","bias.down":"down","bias.left":"left","bias.right":"right",
@@ -3604,7 +4050,16 @@ button.link {
     "h.selectSes":"Sessions (select one to view its dashboard)","h.noneMode":"No sessions of this mode yet.","h.none":"No saved sessions yet.",
     "d.back":"Back to history","d.exportSes":"Export session (JSON)","d.thisMap":"This session","d.accMap":"Accumulated up to this session",
     "g.unsaved":"There is an unsaved result. Leave and discard it?",
-    "b2.modA":"Letter search","b2.modB":"Word building","b2.state":"status","b2.tries":"attempts",
+    "b2.modA":"Letter search","b2.modB":"Word building","b2.modC":"Say the letter","b2.state":"status","b2.tries":"attempts",
+    "ex.voiceHint":"Say out loud the letter you see (or press it on the keyboard)",
+    "ex.voiceOk":"✔ Correct: {0}","ex.voiceFail":"✘ You said {0} · it was {1}","ex.voiceNone":"No answer · it was {0}",
+    "ex.byKeyboard":"(keyboard)",
+    "ex.micDenied":"⚠ No microphone access. You can answer by pressing the letter on the keyboard.",
+    "ex.micNoSupport":"⚠ This browser has no speech recognition. Answer by pressing the letter on the keyboard (Chrome supports it).",
+    "ex.micAsking":"Requesting microphone permission…","ex.micOk":"✔ Microphone available.",
+    "b2c.micLegend":"Say the letter out loud (microphone)","b2c.vsize":"Letter size:",
+    "b2c.vshow":"Letter visible for:","b2c.vlimit":"Maximum answer time:",
+    "b2c.micTest":"🎤 Check microphone",
   };
   const CA = {
     "app.name":"Rehabilitació Visual","nav.menu":"Menú","nav.switch":"Canviar d'usuari","nav.cancel":"Cancel·lar","lang.search":"Cercar idioma…","lang.partial":"parcial",
@@ -3907,16 +4362,16 @@ button.link {
   const I18N = { es: ES, en: EN, ca: CA, va: VA, gl: GL, eu: EU, pt: PT, it: IT, fr: FR, de: DE, ru: RU };
   // Claves de los formularios de configuración (fusionadas sobre I18N).
   const CFGK = {
-  es:{"cfg.dist":"Distancia de uso recomendada","cfg.diag":"Diagonal real de tu pantalla:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma del estímulo","cfg.optX":"Equis (✕)","cfg.optCircle":"Círculo de control","cfg.stimSize":"Tamaño del estímulo:","cfg.center":"Figura central (punto de fijación)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Punto","cfg.centerSize":"Tamaño de la figura central:","cfg.colors":"Colores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Gomet (tu marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacción y marcado","cfg.mode":"Modo de interacción","cfg.auto":"Automático (detectar dispositivo)","cfg.pc":"PC / ratón (cursor + clic)","cfg.touch":"Táctil (tocar con el dedo)","cfg.tol":"Exigencia de precisión:","cfg.view":"Tiempo de visualización tras marcar:","cfg.isi":"Aparición aleatoria del estímulo: hasta","cfg.band":"Mostrar franja «No la veo» tras:","cfg.opts":"Opciones","cfg.sound":"Señal acústica de feedback","cfg.vibr":"Vibración de feedback (móviles compatibles)","cfg.adapt":"Adaptativo: reforzar zonas con más fallos","cfg.cam":"Supervisión por cámara (vista previa)","cfg.reco":"Distancia recomendada","cfg.fov":"Campo visual a esa distancia","cfg.recoWhy":"Distancia mínima prudente que a la vez maximiza el campo visual. Usa el dispositivo en horizontal.","b2c.modeLegend":"Modalidad y nivel","b2c.mod":"Modalidad","b2c.preset":"Nivel predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermedio","b2c.pHard":"Avanzado","b2c.countL":"Número de objetivos:","b2c.countW":"Número de palabras:","b2c.letters":"Letras","b2c.visible":"Letras visibles en pantalla:","b2c.case":"Mayúsculas / minúsculas","b2c.upper":"Mayúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Mezcladas","b2c.enye":"Incluir la letra Ñ","b2c.reshuffle":"Reorganizar las letras tras cada intento","b2c.sizes":"Tamaños (progresión radial)","b2c.min":"Tamaño mínimo (centro):","b2c.max":"Tamaño máximo (periferia):","b2c.prog":"Intensidad de la progresión:","b2c.cdot":"Tamaño del punto central:","b2c.excl":"Zona de exclusión central:","b2c.voiceLegend":"Voz e instrucciones","b2c.voice":"Voz","b2c.rate":"Velocidad de la voz:","b2c.vol":"Volumen:","b2c.written":"Mostrar también la letra/palabra escrita","b2c.test":"🔊 Probar voz","b2c.words":"Palabras (modalidad Formar palabra)","b2c.wlen":"Longitud de palabra:","b2c.pauseB":"Pausa entre palabras/objetivos:","b2c.bandAfter":"Mostrar banda «No la veo / siguiente» tras:"},
-  en:{"cfg.dist":"Recommended viewing distance","cfg.diag":"Actual screen diagonal:","cfg.stim":"Stimuli","cfg.count":"Number of stimuli:","cfg.shape":"Stimulus shape","cfg.optX":"Cross (✕)","cfg.optCircle":"Control circle","cfg.stimSize":"Stimulus size:","cfg.center":"Central figure (fixation point)","cfg.centerShape":"Central shape","cfg.cross":"Cross","cfg.dot":"Dot","cfg.centerSize":"Central figure size:","cfg.colors":"Colours","cfg.colCenter":"Central figure","cfg.colStim":"Stimulus (X/circle)","cfg.colGomet":"Sticker (your mark)","cfg.colCursor":"Cursor","cfg.interact":"Interaction and marking","cfg.mode":"Interaction mode","cfg.auto":"Automatic (detect device)","cfg.pc":"PC / mouse (cursor + click)","cfg.touch":"Touch (tap with finger)","cfg.tol":"Precision demand:","cfg.view":"Viewing time after marking:","cfg.isi":"Random stimulus onset: up to","cfg.band":"Show band after:","cfg.opts":"Options","cfg.sound":"Audio feedback","cfg.vibr":"Vibration feedback (compatible phones)","cfg.adapt":"Adaptive: reinforce weakest zones","cfg.cam":"Camera supervision (preview)","cfg.reco":"Recommended distance","cfg.fov":"Visual field at that distance","cfg.recoWhy":"Minimum safe distance that also maximises the visual field. Use the device in landscape.","b2c.modeLegend":"Mode and level","b2c.mod":"Mode","b2c.preset":"Preset level","b2c.pCustom":"Custom","b2c.pEasy":"Beginner","b2c.pMid":"Intermediate","b2c.pHard":"Advanced","b2c.countL":"Number of targets:","b2c.countW":"Number of words:","b2c.letters":"Letters","b2c.visible":"Letters visible on screen:","b2c.case":"Upper / lower case","b2c.upper":"Uppercase","b2c.lower":"Lowercase","b2c.mixed":"Mixed","b2c.enye":"Include letter Ñ","b2c.reshuffle":"Rearrange letters after each attempt","b2c.sizes":"Sizes (radial progression)","b2c.min":"Minimum size (centre):","b2c.max":"Maximum size (periphery):","b2c.prog":"Progression intensity:","b2c.cdot":"Central dot size:","b2c.excl":"Central exclusion zone:","b2c.voiceLegend":"Voice and instructions","b2c.voice":"Voice","b2c.rate":"Voice rate:","b2c.vol":"Volume:","b2c.written":"Also show the written letter/word","b2c.test":"🔊 Test voice","b2c.words":"Words (word-building mode)","b2c.wlen":"Word length:","b2c.pauseB":"Pause between words/targets:","b2c.bandAfter":"Show skip band after:"},
-  ca:{"cfg.dist":"Distància d'ús recomanada","cfg.diag":"Diagonal real de la pantalla:","cfg.stim":"Estímuls","cfg.count":"Nombre d'estímuls:","cfg.shape":"Forma de l'estímul","cfg.optX":"Ics (✕)","cfg.optCircle":"Cercle de control","cfg.stimSize":"Mida de l'estímul:","cfg.center":"Figura central (punt de fixació)","cfg.centerShape":"Forma central","cfg.cross":"Creu","cfg.dot":"Punt","cfg.centerSize":"Mida de la figura central:","cfg.colors":"Colors","cfg.colCenter":"Figura central","cfg.colStim":"Estímul (X/cercle)","cfg.colGomet":"Gomet (la teva marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacció i marcatge","cfg.mode":"Mode d'interacció","cfg.auto":"Automàtic (detectar dispositiu)","cfg.pc":"PC / ratolí (cursor + clic)","cfg.touch":"Tàctil (tocar amb el dit)","cfg.tol":"Exigència de precisió:","cfg.view":"Temps de visualització en marcar:","cfg.isi":"Aparició aleatòria de l'estímul: fins a","cfg.band":"Mostrar franja «No la veig» després de:","cfg.opts":"Opcions","cfg.sound":"Senyal acústic de retorn","cfg.vibr":"Vibració de retorn (mòbils compatibles)","cfg.adapt":"Adaptatiu: reforçar zones amb més errors","cfg.cam":"Supervisió per càmera (previsualització)","cfg.reco":"Distància recomanada","cfg.fov":"Camp visual a aquesta distància","cfg.recoWhy":"Distància mínima prudent que alhora maximitza el camp visual. Fes servir el dispositiu en horitzontal.","b2c.modeLegend":"Modalitat i nivell","b2c.mod":"Modalitat","b2c.preset":"Nivell predefinit","b2c.pCustom":"Personalitzat","b2c.pEasy":"Inicial","b2c.pMid":"Intermedi","b2c.pHard":"Avançat","b2c.countL":"Nombre d'objectius:","b2c.countW":"Nombre de paraules:","b2c.letters":"Lletres","b2c.visible":"Lletres visibles en pantalla:","b2c.case":"Majúscules / minúscules","b2c.upper":"Majúscules","b2c.lower":"Minúscules","b2c.mixed":"Barrejades","b2c.enye":"Incloure la lletra Ñ","b2c.reshuffle":"Reorganitzar les lletres a cada intent","b2c.sizes":"Mides (progressió radial)","b2c.min":"Mida mínima (centre):","b2c.max":"Mida màxima (perifèria):","b2c.prog":"Intensitat de la progressió:","b2c.cdot":"Mida del punt central:","b2c.excl":"Zona d'exclusió central:","b2c.voiceLegend":"Veu i instruccions","b2c.voice":"Veu","b2c.rate":"Velocitat de la veu:","b2c.vol":"Volum:","b2c.written":"Mostrar també la lletra/paraula escrita","b2c.test":"🔊 Provar veu","b2c.words":"Paraules (modalitat Formar paraula)","b2c.wlen":"Longitud de paraula:","b2c.pauseB":"Pausa entre paraules/objectius:","b2c.bandAfter":"Mostrar banda «Saltar» després de:"},
-  gl:{"cfg.dist":"Distancia de uso recomendada","cfg.diag":"Diagonal real da pantalla:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma do estímulo","cfg.optX":"Equis (✕)","cfg.optCircle":"Círculo de control","cfg.stimSize":"Tamaño do estímulo:","cfg.center":"Figura central (punto de fixación)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Punto","cfg.centerSize":"Tamaño da figura central:","cfg.colors":"Cores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Gomete (a túa marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacción e marcaxe","cfg.mode":"Modo de interacción","cfg.auto":"Automático (detectar dispositivo)","cfg.pc":"PC / rato (cursor + clic)","cfg.touch":"Táctil (tocar co dedo)","cfg.tol":"Esixencia de precisión:","cfg.view":"Tempo de visualización tras marcar:","cfg.isi":"Aparición aleatoria do estímulo: ata","cfg.band":"Mostrar franxa «Non a vexo» tras:","cfg.opts":"Opcións","cfg.sound":"Sinal acústico de retorno","cfg.vibr":"Vibración de retorno (móbiles compatibles)","cfg.adapt":"Adaptativo: reforzar zonas con máis erros","cfg.cam":"Supervisión por cámara (vista previa)","cfg.reco":"Distancia recomendada","cfg.fov":"Campo visual a esa distancia","cfg.recoWhy":"Distancia mínima prudente que maximiza o campo visual. Usa o dispositivo en horizontal.","b2c.modeLegend":"Modalidade e nivel","b2c.mod":"Modalidade","b2c.preset":"Nivel predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermedio","b2c.pHard":"Avanzado","b2c.countL":"Número de obxectivos:","b2c.countW":"Número de palabras:","b2c.letters":"Letras","b2c.visible":"Letras visibles en pantalla:","b2c.case":"Maiúsculas / minúsculas","b2c.upper":"Maiúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Mesturadas","b2c.enye":"Incluír a letra Ñ","b2c.reshuffle":"Reorganizar as letras tras cada intento","b2c.sizes":"Tamaños (progresión radial)","b2c.min":"Tamaño mínimo (centro):","b2c.max":"Tamaño máximo (periferia):","b2c.prog":"Intensidade da progresión:","b2c.cdot":"Tamaño do punto central:","b2c.excl":"Zona de exclusión central:","b2c.voiceLegend":"Voz e instrucións","b2c.voice":"Voz","b2c.rate":"Velocidade da voz:","b2c.vol":"Volume:","b2c.written":"Mostrar tamén a letra/palabra escrita","b2c.test":"🔊 Probar voz","b2c.words":"Palabras (modalidade Formar palabra)","b2c.wlen":"Lonxitude de palabra:","b2c.pauseB":"Pausa entre palabras/obxectivos:","b2c.bandAfter":"Mostrar banda «Saltar» tras:"},
-  eu:{"cfg.dist":"Gomendatutako erabilera-distantzia","cfg.diag":"Pantailaren benetako diagonala:","cfg.stim":"Estimuluak","cfg.count":"Estimulu kopurua:","cfg.shape":"Estimuluaren forma","cfg.optX":"Ixa (✕)","cfg.optCircle":"Kontrol-zirkulua","cfg.stimSize":"Estimuluaren tamaina:","cfg.center":"Erdiko irudia (finkatze-puntua)","cfg.centerShape":"Erdiko forma","cfg.cross":"Gurutzea","cfg.dot":"Puntua","cfg.centerSize":"Erdiko irudiaren tamaina:","cfg.colors":"Koloreak","cfg.colCenter":"Erdiko irudia","cfg.colStim":"Estimulua (X/zirkulua)","cfg.colGomet":"Gometa (zure marka)","cfg.colCursor":"Kurtsorea","cfg.interact":"Interakzioa eta markaketa","cfg.mode":"Interakzio modua","cfg.auto":"Automatikoa (gailua detektatu)","cfg.pc":"PC / sagua (kurtsorea + klik)","cfg.touch":"Ukipena (hatzarekin ukitu)","cfg.tol":"Zehaztasun-eskakizuna:","cfg.view":"Ikuste-denbora markatu ostean:","cfg.isi":"Ausazko agerpena: gehienez","cfg.band":"«Ez dut ikusten» banda erakutsi:","cfg.opts":"Aukerak","cfg.sound":"Soinu-seinalea","cfg.vibr":"Bibrazioa (gailu bateragarriak)","cfg.adapt":"Egokitzailea: gune ahulenak indartu","cfg.cam":"Kamera bidezko gainbegiratzea","cfg.reco":"Gomendatutako distantzia","cfg.fov":"Ikus-eremua distantzia horretan","cfg.recoWhy":"Distantzia seguru txikiena, ikus-eremua maximizatzen duena. Erabili gailua horizontalean.","b2c.modeLegend":"Modalitatea eta maila","b2c.mod":"Modalitatea","b2c.preset":"Aurrezarritako maila","b2c.pCustom":"Pertsonalizatua","b2c.pEasy":"Hasierakoa","b2c.pMid":"Ertaina","b2c.pHard":"Aurreratua","b2c.countL":"Helburu kopurua:","b2c.countW":"Hitz kopurua:","b2c.letters":"Letrak","b2c.visible":"Pantailako letra ikusgaiak:","b2c.case":"Maiuskulak / minuskulak","b2c.upper":"Maiuskulak","b2c.lower":"Minuskulak","b2c.mixed":"Nahasiak","b2c.enye":"Ñ letra sartu","b2c.reshuffle":"Letrak berrantolatu saiakera bakoitzean","b2c.sizes":"Tamainak (progresio erradiala)","b2c.min":"Gutxieneko tamaina (erdigunea):","b2c.max":"Gehienezko tamaina (periferia):","b2c.prog":"Progresioaren intentsitatea:","b2c.cdot":"Erdiko puntuaren tamaina:","b2c.excl":"Erdiko bazterketa-eremua:","b2c.voiceLegend":"Ahotsa eta jarraibideak","b2c.voice":"Ahotsa","b2c.rate":"Ahotsaren abiadura:","b2c.vol":"Bolumena:","b2c.written":"Letra/hitza idatzita ere erakutsi","b2c.test":"🔊 Ahotsa probatu","b2c.words":"Hitzak (hitzak osatzeko modalitatea)","b2c.wlen":"Hitzaren luzera:","b2c.pauseB":"Hitz/helburuen arteko pausa:","b2c.bandAfter":"«Saltatu» banda erakutsi:"},
-  pt:{"cfg.dist":"Distância de uso recomendada","cfg.diag":"Diagonal real do ecrã:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma do estímulo","cfg.optX":"Xis (✕)","cfg.optCircle":"Círculo de controlo","cfg.stimSize":"Tamanho do estímulo:","cfg.center":"Figura central (ponto de fixação)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Ponto","cfg.centerSize":"Tamanho da figura central:","cfg.colors":"Cores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Autocolante (a tua marca)","cfg.colCursor":"Cursor","cfg.interact":"Interação e marcação","cfg.mode":"Modo de interação","cfg.auto":"Automático (detetar dispositivo)","cfg.pc":"PC / rato (cursor + clique)","cfg.touch":"Tátil (tocar com o dedo)","cfg.tol":"Exigência de precisão:","cfg.view":"Tempo de visualização após marcar:","cfg.isi":"Aparição aleatória: até","cfg.band":"Mostrar faixa «Não a vejo» após:","cfg.opts":"Opções","cfg.sound":"Sinal acústico","cfg.vibr":"Vibração (telemóveis compatíveis)","cfg.adapt":"Adaptativo: reforçar zonas fracas","cfg.cam":"Supervisão por câmara (pré-visualização)","cfg.reco":"Distância recomendada","cfg.fov":"Campo visual a essa distância","cfg.recoWhy":"Distância mínima prudente que maximiza o campo visual. Usa o dispositivo na horizontal.","b2c.modeLegend":"Modalidade e nível","b2c.mod":"Modalidade","b2c.preset":"Nível predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermédio","b2c.pHard":"Avançado","b2c.countL":"Número de alvos:","b2c.countW":"Número de palavras:","b2c.letters":"Letras","b2c.visible":"Letras visíveis no ecrã:","b2c.case":"Maiúsculas / minúsculas","b2c.upper":"Maiúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Misturadas","b2c.enye":"Incluir a letra Ñ","b2c.reshuffle":"Reorganizar as letras após cada tentativa","b2c.sizes":"Tamanhos (progressão radial)","b2c.min":"Tamanho mínimo (centro):","b2c.max":"Tamanho máximo (periferia):","b2c.prog":"Intensidade da progressão:","b2c.cdot":"Tamanho do ponto central:","b2c.excl":"Zona de exclusão central:","b2c.voiceLegend":"Voz e instruções","b2c.voice":"Voz","b2c.rate":"Velocidade da voz:","b2c.vol":"Volume:","b2c.written":"Mostrar também a letra/palavra escrita","b2c.test":"🔊 Testar voz","b2c.words":"Palavras (modalidade Formar palavra)","b2c.wlen":"Comprimento da palavra:","b2c.pauseB":"Pausa entre palavras/alvos:","b2c.bandAfter":"Mostrar faixa «Saltar» após:"},
-  it:{"cfg.dist":"Distanza d'uso consigliata","cfg.diag":"Diagonale reale dello schermo:","cfg.stim":"Stimoli","cfg.count":"Numero di stimoli:","cfg.shape":"Forma dello stimolo","cfg.optX":"Ics (✕)","cfg.optCircle":"Cerchio di controllo","cfg.stimSize":"Dimensione dello stimolo:","cfg.center":"Figura centrale (punto di fissazione)","cfg.centerShape":"Forma centrale","cfg.cross":"Croce","cfg.dot":"Punto","cfg.centerSize":"Dimensione della figura centrale:","cfg.colors":"Colori","cfg.colCenter":"Figura centrale","cfg.colStim":"Stimolo (X/cerchio)","cfg.colGomet":"Bollino (il tuo segno)","cfg.colCursor":"Cursore","cfg.interact":"Interazione e marcatura","cfg.mode":"Modo di interazione","cfg.auto":"Automatico (rileva dispositivo)","cfg.pc":"PC / mouse (cursore + clic)","cfg.touch":"Touch (tocca con il dito)","cfg.tol":"Esigenza di precisione:","cfg.view":"Tempo di visualizzazione dopo il segno:","cfg.isi":"Comparsa casuale: fino a","cfg.band":"Mostra banda «Non la vedo» dopo:","cfg.opts":"Opzioni","cfg.sound":"Segnale acustico","cfg.vibr":"Vibrazione (telefoni compatibili)","cfg.adapt":"Adattivo: rinforza le zone deboli","cfg.cam":"Supervisione con fotocamera","cfg.reco":"Distanza consigliata","cfg.fov":"Campo visivo a quella distanza","cfg.recoWhy":"Distanza minima prudente che massimizza il campo visivo. Usa il dispositivo in orizzontale.","b2c.modeLegend":"Modalità e livello","b2c.mod":"Modalità","b2c.preset":"Livello predefinito","b2c.pCustom":"Personalizzato","b2c.pEasy":"Iniziale","b2c.pMid":"Intermedio","b2c.pHard":"Avanzato","b2c.countL":"Numero di obiettivi:","b2c.countW":"Numero di parole:","b2c.letters":"Lettere","b2c.visible":"Lettere visibili sullo schermo:","b2c.case":"Maiuscole / minuscole","b2c.upper":"Maiuscole","b2c.lower":"Minuscole","b2c.mixed":"Miste","b2c.enye":"Includi la lettera Ñ","b2c.reshuffle":"Riorganizza le lettere dopo ogni tentativo","b2c.sizes":"Dimensioni (progressione radiale)","b2c.min":"Dimensione minima (centro):","b2c.max":"Dimensione massima (periferia):","b2c.prog":"Intensità della progressione:","b2c.cdot":"Dimensione del punto centrale:","b2c.excl":"Zona di esclusione centrale:","b2c.voiceLegend":"Voce e istruzioni","b2c.voice":"Voce","b2c.rate":"Velocità della voce:","b2c.vol":"Volume:","b2c.written":"Mostra anche la lettera/parola scritta","b2c.test":"🔊 Prova voce","b2c.words":"Parole (modalità Forma la parola)","b2c.wlen":"Lunghezza della parola:","b2c.pauseB":"Pausa tra parole/obiettivi:","b2c.bandAfter":"Mostra banda «Salta» dopo:"},
-  fr:{"cfg.dist":"Distance d'utilisation recommandée","cfg.diag":"Diagonale réelle de l'écran :","cfg.stim":"Stimuli","cfg.count":"Nombre de stimuli :","cfg.shape":"Forme du stimulus","cfg.optX":"Croix (✕)","cfg.optCircle":"Cercle de contrôle","cfg.stimSize":"Taille du stimulus :","cfg.center":"Figure centrale (point de fixation)","cfg.centerShape":"Forme centrale","cfg.cross":"Croix","cfg.dot":"Point","cfg.centerSize":"Taille de la figure centrale :","cfg.colors":"Couleurs","cfg.colCenter":"Figure centrale","cfg.colStim":"Stimulus (X/cercle)","cfg.colGomet":"Gommette (ta marque)","cfg.colCursor":"Curseur","cfg.interact":"Interaction et marquage","cfg.mode":"Mode d'interaction","cfg.auto":"Automatique (détecter l'appareil)","cfg.pc":"PC / souris (curseur + clic)","cfg.touch":"Tactile (toucher du doigt)","cfg.tol":"Exigence de précision :","cfg.view":"Temps d'affichage après marquage :","cfg.isi":"Apparition aléatoire : jusqu'à","cfg.band":"Afficher la bande après :","cfg.opts":"Options","cfg.sound":"Signal sonore","cfg.vibr":"Vibration (téléphones compatibles)","cfg.adapt":"Adaptatif : renforcer les zones faibles","cfg.cam":"Supervision par caméra (aperçu)","cfg.reco":"Distance recommandée","cfg.fov":"Champ visuel à cette distance","cfg.recoWhy":"Distance minimale prudente qui maximise le champ visuel. Utilise l'appareil à l'horizontale.","b2c.modeLegend":"Modalité et niveau","b2c.mod":"Modalité","b2c.preset":"Niveau prédéfini","b2c.pCustom":"Personnalisé","b2c.pEasy":"Débutant","b2c.pMid":"Intermédiaire","b2c.pHard":"Avancé","b2c.countL":"Nombre de cibles :","b2c.countW":"Nombre de mots :","b2c.letters":"Lettres","b2c.visible":"Lettres visibles à l'écran :","b2c.case":"Majuscules / minuscules","b2c.upper":"Majuscules","b2c.lower":"Minuscules","b2c.mixed":"Mélangées","b2c.enye":"Inclure la lettre Ñ","b2c.reshuffle":"Réorganiser les lettres après chaque essai","b2c.sizes":"Tailles (progression radiale)","b2c.min":"Taille minimale (centre) :","b2c.max":"Taille maximale (périphérie) :","b2c.prog":"Intensité de la progression :","b2c.cdot":"Taille du point central :","b2c.excl":"Zone d'exclusion centrale :","b2c.voiceLegend":"Voix et consignes","b2c.voice":"Voix","b2c.rate":"Vitesse de la voix :","b2c.vol":"Volume :","b2c.written":"Afficher aussi la lettre/le mot écrit","b2c.test":"🔊 Tester la voix","b2c.words":"Mots (modalité Former le mot)","b2c.wlen":"Longueur du mot :","b2c.pauseB":"Pause entre mots/cibles :","b2c.bandAfter":"Afficher la bande « Passer » après :"},
-  de:{"cfg.dist":"Empfohlener Nutzungsabstand","cfg.diag":"Tatsächliche Bildschirmdiagonale:","cfg.stim":"Reize","cfg.count":"Anzahl der Reize:","cfg.shape":"Reizform","cfg.optX":"Kreuz (✕)","cfg.optCircle":"Kontrollkreis","cfg.stimSize":"Reizgröße:","cfg.center":"Zentrale Figur (Fixationspunkt)","cfg.centerShape":"Zentrale Form","cfg.cross":"Kreuz","cfg.dot":"Punkt","cfg.centerSize":"Größe der zentralen Figur:","cfg.colors":"Farben","cfg.colCenter":"Zentrale Figur","cfg.colStim":"Reiz (X/Kreis)","cfg.colGomet":"Klebepunkt (deine Marke)","cfg.colCursor":"Cursor","cfg.interact":"Interaktion und Markierung","cfg.mode":"Interaktionsmodus","cfg.auto":"Automatisch (Gerät erkennen)","cfg.pc":"PC / Maus (Cursor + Klick)","cfg.touch":"Touch (mit dem Finger tippen)","cfg.tol":"Präzisionsanforderung:","cfg.view":"Anzeigezeit nach dem Markieren:","cfg.isi":"Zufälliges Erscheinen: bis zu","cfg.band":"Band anzeigen nach:","cfg.opts":"Optionen","cfg.sound":"Akustisches Feedback","cfg.vibr":"Vibration (kompatible Geräte)","cfg.adapt":"Adaptiv: schwache Zonen verstärken","cfg.cam":"Kameraüberwachung (Vorschau)","cfg.reco":"Empfohlener Abstand","cfg.fov":"Gesichtsfeld bei diesem Abstand","cfg.recoWhy":"Kleinster sicherer Abstand mit maximalem Gesichtsfeld. Gerät im Querformat verwenden.","b2c.modeLegend":"Modus und Stufe","b2c.mod":"Modus","b2c.preset":"Voreingestellte Stufe","b2c.pCustom":"Benutzerdefiniert","b2c.pEasy":"Anfänger","b2c.pMid":"Mittel","b2c.pHard":"Fortgeschritten","b2c.countL":"Anzahl der Ziele:","b2c.countW":"Anzahl der Wörter:","b2c.letters":"Buchstaben","b2c.visible":"Sichtbare Buchstaben:","b2c.case":"Groß-/Kleinschreibung","b2c.upper":"Großbuchstaben","b2c.lower":"Kleinbuchstaben","b2c.mixed":"Gemischt","b2c.enye":"Buchstabe Ñ einschließen","b2c.reshuffle":"Buchstaben nach jedem Versuch neu anordnen","b2c.sizes":"Größen (radiale Progression)","b2c.min":"Mindestgröße (Zentrum):","b2c.max":"Maximalgröße (Peripherie):","b2c.prog":"Progressionsintensität:","b2c.cdot":"Größe des zentralen Punkts:","b2c.excl":"Zentrale Ausschlusszone:","b2c.voiceLegend":"Stimme und Anweisungen","b2c.voice":"Stimme","b2c.rate":"Sprechgeschwindigkeit:","b2c.vol":"Lautstärke:","b2c.written":"Buchstabe/Wort auch schriftlich zeigen","b2c.test":"🔊 Stimme testen","b2c.words":"Wörter (Wortbildungsmodus)","b2c.wlen":"Wortlänge:","b2c.pauseB":"Pause zwischen Wörtern/Zielen:","b2c.bandAfter":"Überspringen-Band zeigen nach:"},
-  ru:{"cfg.dist":"Рекомендуемое расстояние","cfg.diag":"Реальная диагональ экрана:","cfg.stim":"Стимулы","cfg.count":"Число стимулов:","cfg.shape":"Форма стимула","cfg.optX":"Крест (✕)","cfg.optCircle":"Контрольный круг","cfg.stimSize":"Размер стимула:","cfg.center":"Центральная фигура (точка фиксации)","cfg.centerShape":"Центральная форма","cfg.cross":"Крест","cfg.dot":"Точка","cfg.centerSize":"Размер центральной фигуры:","cfg.colors":"Цвета","cfg.colCenter":"Центральная фигура","cfg.colStim":"Стимул (X/круг)","cfg.colGomet":"Наклейка (ваша отметка)","cfg.colCursor":"Курсор","cfg.interact":"Взаимодействие и отметки","cfg.mode":"Режим взаимодействия","cfg.auto":"Автоматически (определить устройство)","cfg.pc":"ПК / мышь (курсор + клик)","cfg.touch":"Сенсорный (касание пальцем)","cfg.tol":"Требование точности:","cfg.view":"Время показа после отметки:","cfg.isi":"Случайное появление: до","cfg.band":"Показывать полосу через:","cfg.opts":"Параметры","cfg.sound":"Звуковой сигнал","cfg.vibr":"Вибрация (совместимые телефоны)","cfg.adapt":"Адаптивно: усиливать слабые зоны","cfg.cam":"Наблюдение камерой (превью)","cfg.reco":"Рекомендуемое расстояние","cfg.fov":"Поле зрения на этом расстоянии","cfg.recoWhy":"Минимально безопасное расстояние с максимальным полем зрения. Держите устройство горизонтально.","b2c.modeLegend":"Режим и уровень","b2c.mod":"Режим","b2c.preset":"Предустановленный уровень","b2c.pCustom":"Пользовательский","b2c.pEasy":"Начальный","b2c.pMid":"Средний","b2c.pHard":"Продвинутый","b2c.countL":"Число целей:","b2c.countW":"Число слов:","b2c.letters":"Буквы","b2c.visible":"Видимых букв на экране:","b2c.case":"Прописные / строчные","b2c.upper":"Прописные","b2c.lower":"Строчные","b2c.mixed":"Смешанные","b2c.enye":"Включить букву Ñ","b2c.reshuffle":"Перемешивать буквы после каждой попытки","b2c.sizes":"Размеры (радиальная прогрессия)","b2c.min":"Минимальный размер (центр):","b2c.max":"Максимальный размер (периферия):","b2c.prog":"Интенсивность прогрессии:","b2c.cdot":"Размер центральной точки:","b2c.excl":"Центральная зона исключения:","b2c.voiceLegend":"Голос и инструкции","b2c.voice":"Голос","b2c.rate":"Скорость речи:","b2c.vol":"Громкость:","b2c.written":"Также показывать букву/слово","b2c.test":"🔊 Проверить голос","b2c.words":"Слова (режим составления)","b2c.wlen":"Длина слова:","b2c.pauseB":"Пауза между словами/целями:","b2c.bandAfter":"Полоса «Пропустить» через:"},
+  es:{"cfg.dist":"Distancia de uso recomendada","cfg.diag":"Diagonal real de tu pantalla:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma del estímulo","cfg.optX":"Equis (✕)","cfg.optCircle":"Círculo de control","cfg.stimSize":"Tamaño del estímulo:","cfg.radMin":"Área de aparición, desde el centro:","cfg.radMax":"Área de aparición, hasta la periferia:","cfg.center":"Figura central (punto de fijación)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Punto","cfg.centerSize":"Tamaño de la figura central:","cfg.colors":"Colores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Gomet (tu marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacción y marcado","cfg.mode":"Modo de interacción","cfg.auto":"Automático (detectar dispositivo)","cfg.pc":"PC / ratón (cursor + clic)","cfg.touch":"Táctil (tocar con el dedo)","cfg.tol":"Exigencia de precisión:","cfg.view":"Tiempo de visualización tras marcar:","cfg.isi":"Aparición aleatoria del estímulo: hasta","cfg.band":"Mostrar franja «No la veo» tras:","cfg.opts":"Opciones","cfg.sound":"Señal acústica de feedback","cfg.vibr":"Vibración de feedback (móviles compatibles)","cfg.adapt":"Adaptativo: reforzar zonas con más fallos","cfg.cam":"Supervisión por cámara (vista previa)","cfg.reco":"Distancia recomendada","cfg.fov":"Campo visual a esa distancia","cfg.recoWhy":"Distancia mínima prudente que a la vez maximiza el campo visual. Usa el dispositivo en horizontal.","b2c.modeLegend":"Modalidad y nivel","b2c.mod":"Modalidad","b2c.preset":"Nivel predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermedio","b2c.pHard":"Avanzado","b2c.countL":"Número de objetivos:","b2c.countW":"Número de palabras:","b2c.letters":"Letras","b2c.visible":"Letras visibles en pantalla:","b2c.case":"Mayúsculas / minúsculas","b2c.upper":"Mayúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Mezcladas","b2c.enye":"Incluir la letra Ñ","b2c.reshuffle":"Reorganizar las letras tras cada intento","b2c.sizes":"Tamaños (progresión radial)","b2c.min":"Tamaño mínimo (centro):","b2c.max":"Tamaño máximo (periferia):","b2c.prog":"Intensidad de la progresión:","b2c.cdot":"Tamaño del punto central:","b2c.excl":"Zona de exclusión central:","b2c.voiceLegend":"Voz e instrucciones","b2c.voice":"Voz","b2c.rate":"Velocidad de la voz:","b2c.vol":"Volumen:","b2c.written":"Mostrar también la letra/palabra escrita","b2c.test":"🔊 Probar voz","b2c.words":"Palabras (modalidad Formar palabra)","b2c.wlen":"Longitud de palabra:","b2c.pauseB":"Pausa entre palabras/objetivos:","b2c.bandAfter":"Mostrar banda «No la veo / siguiente» tras:"},
+  en:{"cfg.dist":"Recommended viewing distance","cfg.diag":"Actual screen diagonal:","cfg.stim":"Stimuli","cfg.count":"Number of stimuli:","cfg.shape":"Stimulus shape","cfg.optX":"Cross (✕)","cfg.optCircle":"Control circle","cfg.stimSize":"Stimulus size:","cfg.radMin":"Appearance area, from the centre:","cfg.radMax":"Appearance area, out to the periphery:","cfg.center":"Central figure (fixation point)","cfg.centerShape":"Central shape","cfg.cross":"Cross","cfg.dot":"Dot","cfg.centerSize":"Central figure size:","cfg.colors":"Colours","cfg.colCenter":"Central figure","cfg.colStim":"Stimulus (X/circle)","cfg.colGomet":"Sticker (your mark)","cfg.colCursor":"Cursor","cfg.interact":"Interaction and marking","cfg.mode":"Interaction mode","cfg.auto":"Automatic (detect device)","cfg.pc":"PC / mouse (cursor + click)","cfg.touch":"Touch (tap with finger)","cfg.tol":"Precision demand:","cfg.view":"Viewing time after marking:","cfg.isi":"Random stimulus onset: up to","cfg.band":"Show band after:","cfg.opts":"Options","cfg.sound":"Audio feedback","cfg.vibr":"Vibration feedback (compatible phones)","cfg.adapt":"Adaptive: reinforce weakest zones","cfg.cam":"Camera supervision (preview)","cfg.reco":"Recommended distance","cfg.fov":"Visual field at that distance","cfg.recoWhy":"Minimum safe distance that also maximises the visual field. Use the device in landscape.","b2c.modeLegend":"Mode and level","b2c.mod":"Mode","b2c.preset":"Preset level","b2c.pCustom":"Custom","b2c.pEasy":"Beginner","b2c.pMid":"Intermediate","b2c.pHard":"Advanced","b2c.countL":"Number of targets:","b2c.countW":"Number of words:","b2c.letters":"Letters","b2c.visible":"Letters visible on screen:","b2c.case":"Upper / lower case","b2c.upper":"Uppercase","b2c.lower":"Lowercase","b2c.mixed":"Mixed","b2c.enye":"Include letter Ñ","b2c.reshuffle":"Rearrange letters after each attempt","b2c.sizes":"Sizes (radial progression)","b2c.min":"Minimum size (centre):","b2c.max":"Maximum size (periphery):","b2c.prog":"Progression intensity:","b2c.cdot":"Central dot size:","b2c.excl":"Central exclusion zone:","b2c.voiceLegend":"Voice and instructions","b2c.voice":"Voice","b2c.rate":"Voice rate:","b2c.vol":"Volume:","b2c.written":"Also show the written letter/word","b2c.test":"🔊 Test voice","b2c.words":"Words (word-building mode)","b2c.wlen":"Word length:","b2c.pauseB":"Pause between words/targets:","b2c.bandAfter":"Show skip band after:"},
+  ca:{"cfg.dist":"Distància d'ús recomanada","cfg.diag":"Diagonal real de la pantalla:","cfg.stim":"Estímuls","cfg.count":"Nombre d'estímuls:","cfg.shape":"Forma de l'estímul","cfg.optX":"Ics (✕)","cfg.optCircle":"Cercle de control","cfg.stimSize":"Mida de l'estímul:","cfg.radMin":"Àrea d'aparició, des del centre:","cfg.radMax":"Àrea d'aparició, fins a la perifèria:","cfg.center":"Figura central (punt de fixació)","cfg.centerShape":"Forma central","cfg.cross":"Creu","cfg.dot":"Punt","cfg.centerSize":"Mida de la figura central:","cfg.colors":"Colors","cfg.colCenter":"Figura central","cfg.colStim":"Estímul (X/cercle)","cfg.colGomet":"Gomet (la teva marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacció i marcatge","cfg.mode":"Mode d'interacció","cfg.auto":"Automàtic (detectar dispositiu)","cfg.pc":"PC / ratolí (cursor + clic)","cfg.touch":"Tàctil (tocar amb el dit)","cfg.tol":"Exigència de precisió:","cfg.view":"Temps de visualització en marcar:","cfg.isi":"Aparició aleatòria de l'estímul: fins a","cfg.band":"Mostrar franja «No la veig» després de:","cfg.opts":"Opcions","cfg.sound":"Senyal acústic de retorn","cfg.vibr":"Vibració de retorn (mòbils compatibles)","cfg.adapt":"Adaptatiu: reforçar zones amb més errors","cfg.cam":"Supervisió per càmera (previsualització)","cfg.reco":"Distància recomanada","cfg.fov":"Camp visual a aquesta distància","cfg.recoWhy":"Distància mínima prudent que alhora maximitza el camp visual. Fes servir el dispositiu en horitzontal.","b2c.modeLegend":"Modalitat i nivell","b2c.mod":"Modalitat","b2c.preset":"Nivell predefinit","b2c.pCustom":"Personalitzat","b2c.pEasy":"Inicial","b2c.pMid":"Intermedi","b2c.pHard":"Avançat","b2c.countL":"Nombre d'objectius:","b2c.countW":"Nombre de paraules:","b2c.letters":"Lletres","b2c.visible":"Lletres visibles en pantalla:","b2c.case":"Majúscules / minúscules","b2c.upper":"Majúscules","b2c.lower":"Minúscules","b2c.mixed":"Barrejades","b2c.enye":"Incloure la lletra Ñ","b2c.reshuffle":"Reorganitzar les lletres a cada intent","b2c.sizes":"Mides (progressió radial)","b2c.min":"Mida mínima (centre):","b2c.max":"Mida màxima (perifèria):","b2c.prog":"Intensitat de la progressió:","b2c.cdot":"Mida del punt central:","b2c.excl":"Zona d'exclusió central:","b2c.voiceLegend":"Veu i instruccions","b2c.voice":"Veu","b2c.rate":"Velocitat de la veu:","b2c.vol":"Volum:","b2c.written":"Mostrar també la lletra/paraula escrita","b2c.test":"🔊 Provar veu","b2c.words":"Paraules (modalitat Formar paraula)","b2c.wlen":"Longitud de paraula:","b2c.pauseB":"Pausa entre paraules/objectius:","b2c.bandAfter":"Mostrar banda «Saltar» després de:"},
+  gl:{"cfg.dist":"Distancia de uso recomendada","cfg.diag":"Diagonal real da pantalla:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma do estímulo","cfg.optX":"Equis (✕)","cfg.optCircle":"Círculo de control","cfg.stimSize":"Tamaño do estímulo:","cfg.radMin":"Área de aparición, desde o centro:","cfg.radMax":"Área de aparición, ata a periferia:","cfg.center":"Figura central (punto de fixación)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Punto","cfg.centerSize":"Tamaño da figura central:","cfg.colors":"Cores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Gomete (a túa marca)","cfg.colCursor":"Cursor","cfg.interact":"Interacción e marcaxe","cfg.mode":"Modo de interacción","cfg.auto":"Automático (detectar dispositivo)","cfg.pc":"PC / rato (cursor + clic)","cfg.touch":"Táctil (tocar co dedo)","cfg.tol":"Esixencia de precisión:","cfg.view":"Tempo de visualización tras marcar:","cfg.isi":"Aparición aleatoria do estímulo: ata","cfg.band":"Mostrar franxa «Non a vexo» tras:","cfg.opts":"Opcións","cfg.sound":"Sinal acústico de retorno","cfg.vibr":"Vibración de retorno (móbiles compatibles)","cfg.adapt":"Adaptativo: reforzar zonas con máis erros","cfg.cam":"Supervisión por cámara (vista previa)","cfg.reco":"Distancia recomendada","cfg.fov":"Campo visual a esa distancia","cfg.recoWhy":"Distancia mínima prudente que maximiza o campo visual. Usa o dispositivo en horizontal.","b2c.modeLegend":"Modalidade e nivel","b2c.mod":"Modalidade","b2c.preset":"Nivel predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermedio","b2c.pHard":"Avanzado","b2c.countL":"Número de obxectivos:","b2c.countW":"Número de palabras:","b2c.letters":"Letras","b2c.visible":"Letras visibles en pantalla:","b2c.case":"Maiúsculas / minúsculas","b2c.upper":"Maiúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Mesturadas","b2c.enye":"Incluír a letra Ñ","b2c.reshuffle":"Reorganizar as letras tras cada intento","b2c.sizes":"Tamaños (progresión radial)","b2c.min":"Tamaño mínimo (centro):","b2c.max":"Tamaño máximo (periferia):","b2c.prog":"Intensidade da progresión:","b2c.cdot":"Tamaño do punto central:","b2c.excl":"Zona de exclusión central:","b2c.voiceLegend":"Voz e instrucións","b2c.voice":"Voz","b2c.rate":"Velocidade da voz:","b2c.vol":"Volume:","b2c.written":"Mostrar tamén a letra/palabra escrita","b2c.test":"🔊 Probar voz","b2c.words":"Palabras (modalidade Formar palabra)","b2c.wlen":"Lonxitude de palabra:","b2c.pauseB":"Pausa entre palabras/obxectivos:","b2c.bandAfter":"Mostrar banda «Saltar» tras:"},
+  eu:{"cfg.dist":"Gomendatutako erabilera-distantzia","cfg.diag":"Pantailaren benetako diagonala:","cfg.stim":"Estimuluak","cfg.count":"Estimulu kopurua:","cfg.shape":"Estimuluaren forma","cfg.optX":"Ixa (✕)","cfg.optCircle":"Kontrol-zirkulua","cfg.stimSize":"Estimuluaren tamaina:","cfg.radMin":"Agerpen-eremua, erdigunetik:","cfg.radMax":"Agerpen-eremua, periferiaraino:","cfg.center":"Erdiko irudia (finkatze-puntua)","cfg.centerShape":"Erdiko forma","cfg.cross":"Gurutzea","cfg.dot":"Puntua","cfg.centerSize":"Erdiko irudiaren tamaina:","cfg.colors":"Koloreak","cfg.colCenter":"Erdiko irudia","cfg.colStim":"Estimulua (X/zirkulua)","cfg.colGomet":"Gometa (zure marka)","cfg.colCursor":"Kurtsorea","cfg.interact":"Interakzioa eta markaketa","cfg.mode":"Interakzio modua","cfg.auto":"Automatikoa (gailua detektatu)","cfg.pc":"PC / sagua (kurtsorea + klik)","cfg.touch":"Ukipena (hatzarekin ukitu)","cfg.tol":"Zehaztasun-eskakizuna:","cfg.view":"Ikuste-denbora markatu ostean:","cfg.isi":"Ausazko agerpena: gehienez","cfg.band":"«Ez dut ikusten» banda erakutsi:","cfg.opts":"Aukerak","cfg.sound":"Soinu-seinalea","cfg.vibr":"Bibrazioa (gailu bateragarriak)","cfg.adapt":"Egokitzailea: gune ahulenak indartu","cfg.cam":"Kamera bidezko gainbegiratzea","cfg.reco":"Gomendatutako distantzia","cfg.fov":"Ikus-eremua distantzia horretan","cfg.recoWhy":"Distantzia seguru txikiena, ikus-eremua maximizatzen duena. Erabili gailua horizontalean.","b2c.modeLegend":"Modalitatea eta maila","b2c.mod":"Modalitatea","b2c.preset":"Aurrezarritako maila","b2c.pCustom":"Pertsonalizatua","b2c.pEasy":"Hasierakoa","b2c.pMid":"Ertaina","b2c.pHard":"Aurreratua","b2c.countL":"Helburu kopurua:","b2c.countW":"Hitz kopurua:","b2c.letters":"Letrak","b2c.visible":"Pantailako letra ikusgaiak:","b2c.case":"Maiuskulak / minuskulak","b2c.upper":"Maiuskulak","b2c.lower":"Minuskulak","b2c.mixed":"Nahasiak","b2c.enye":"Ñ letra sartu","b2c.reshuffle":"Letrak berrantolatu saiakera bakoitzean","b2c.sizes":"Tamainak (progresio erradiala)","b2c.min":"Gutxieneko tamaina (erdigunea):","b2c.max":"Gehienezko tamaina (periferia):","b2c.prog":"Progresioaren intentsitatea:","b2c.cdot":"Erdiko puntuaren tamaina:","b2c.excl":"Erdiko bazterketa-eremua:","b2c.voiceLegend":"Ahotsa eta jarraibideak","b2c.voice":"Ahotsa","b2c.rate":"Ahotsaren abiadura:","b2c.vol":"Bolumena:","b2c.written":"Letra/hitza idatzita ere erakutsi","b2c.test":"🔊 Ahotsa probatu","b2c.words":"Hitzak (hitzak osatzeko modalitatea)","b2c.wlen":"Hitzaren luzera:","b2c.pauseB":"Hitz/helburuen arteko pausa:","b2c.bandAfter":"«Saltatu» banda erakutsi:"},
+  pt:{"cfg.dist":"Distância de uso recomendada","cfg.diag":"Diagonal real do ecrã:","cfg.stim":"Estímulos","cfg.count":"Número de estímulos:","cfg.shape":"Forma do estímulo","cfg.optX":"Xis (✕)","cfg.optCircle":"Círculo de controlo","cfg.stimSize":"Tamanho do estímulo:","cfg.radMin":"Área de aparição, a partir do centro:","cfg.radMax":"Área de aparição, até à periferia:","cfg.center":"Figura central (ponto de fixação)","cfg.centerShape":"Forma central","cfg.cross":"Cruz","cfg.dot":"Ponto","cfg.centerSize":"Tamanho da figura central:","cfg.colors":"Cores","cfg.colCenter":"Figura central","cfg.colStim":"Estímulo (X/círculo)","cfg.colGomet":"Autocolante (a tua marca)","cfg.colCursor":"Cursor","cfg.interact":"Interação e marcação","cfg.mode":"Modo de interação","cfg.auto":"Automático (detetar dispositivo)","cfg.pc":"PC / rato (cursor + clique)","cfg.touch":"Tátil (tocar com o dedo)","cfg.tol":"Exigência de precisão:","cfg.view":"Tempo de visualização após marcar:","cfg.isi":"Aparição aleatória: até","cfg.band":"Mostrar faixa «Não a vejo» após:","cfg.opts":"Opções","cfg.sound":"Sinal acústico","cfg.vibr":"Vibração (telemóveis compatíveis)","cfg.adapt":"Adaptativo: reforçar zonas fracas","cfg.cam":"Supervisão por câmara (pré-visualização)","cfg.reco":"Distância recomendada","cfg.fov":"Campo visual a essa distância","cfg.recoWhy":"Distância mínima prudente que maximiza o campo visual. Usa o dispositivo na horizontal.","b2c.modeLegend":"Modalidade e nível","b2c.mod":"Modalidade","b2c.preset":"Nível predefinido","b2c.pCustom":"Personalizado","b2c.pEasy":"Inicial","b2c.pMid":"Intermédio","b2c.pHard":"Avançado","b2c.countL":"Número de alvos:","b2c.countW":"Número de palavras:","b2c.letters":"Letras","b2c.visible":"Letras visíveis no ecrã:","b2c.case":"Maiúsculas / minúsculas","b2c.upper":"Maiúsculas","b2c.lower":"Minúsculas","b2c.mixed":"Misturadas","b2c.enye":"Incluir a letra Ñ","b2c.reshuffle":"Reorganizar as letras após cada tentativa","b2c.sizes":"Tamanhos (progressão radial)","b2c.min":"Tamanho mínimo (centro):","b2c.max":"Tamanho máximo (periferia):","b2c.prog":"Intensidade da progressão:","b2c.cdot":"Tamanho do ponto central:","b2c.excl":"Zona de exclusão central:","b2c.voiceLegend":"Voz e instruções","b2c.voice":"Voz","b2c.rate":"Velocidade da voz:","b2c.vol":"Volume:","b2c.written":"Mostrar também a letra/palavra escrita","b2c.test":"🔊 Testar voz","b2c.words":"Palavras (modalidade Formar palavra)","b2c.wlen":"Comprimento da palavra:","b2c.pauseB":"Pausa entre palavras/alvos:","b2c.bandAfter":"Mostrar faixa «Saltar» após:"},
+  it:{"cfg.dist":"Distanza d'uso consigliata","cfg.diag":"Diagonale reale dello schermo:","cfg.stim":"Stimoli","cfg.count":"Numero di stimoli:","cfg.shape":"Forma dello stimolo","cfg.optX":"Ics (✕)","cfg.optCircle":"Cerchio di controllo","cfg.stimSize":"Dimensione dello stimolo:","cfg.radMin":"Area di comparsa, dal centro:","cfg.radMax":"Area di comparsa, fino alla periferia:","cfg.center":"Figura centrale (punto di fissazione)","cfg.centerShape":"Forma centrale","cfg.cross":"Croce","cfg.dot":"Punto","cfg.centerSize":"Dimensione della figura centrale:","cfg.colors":"Colori","cfg.colCenter":"Figura centrale","cfg.colStim":"Stimolo (X/cerchio)","cfg.colGomet":"Bollino (il tuo segno)","cfg.colCursor":"Cursore","cfg.interact":"Interazione e marcatura","cfg.mode":"Modo di interazione","cfg.auto":"Automatico (rileva dispositivo)","cfg.pc":"PC / mouse (cursore + clic)","cfg.touch":"Touch (tocca con il dito)","cfg.tol":"Esigenza di precisione:","cfg.view":"Tempo di visualizzazione dopo il segno:","cfg.isi":"Comparsa casuale: fino a","cfg.band":"Mostra banda «Non la vedo» dopo:","cfg.opts":"Opzioni","cfg.sound":"Segnale acustico","cfg.vibr":"Vibrazione (telefoni compatibili)","cfg.adapt":"Adattivo: rinforza le zone deboli","cfg.cam":"Supervisione con fotocamera","cfg.reco":"Distanza consigliata","cfg.fov":"Campo visivo a quella distanza","cfg.recoWhy":"Distanza minima prudente che massimizza il campo visivo. Usa il dispositivo in orizzontale.","b2c.modeLegend":"Modalità e livello","b2c.mod":"Modalità","b2c.preset":"Livello predefinito","b2c.pCustom":"Personalizzato","b2c.pEasy":"Iniziale","b2c.pMid":"Intermedio","b2c.pHard":"Avanzato","b2c.countL":"Numero di obiettivi:","b2c.countW":"Numero di parole:","b2c.letters":"Lettere","b2c.visible":"Lettere visibili sullo schermo:","b2c.case":"Maiuscole / minuscole","b2c.upper":"Maiuscole","b2c.lower":"Minuscole","b2c.mixed":"Miste","b2c.enye":"Includi la lettera Ñ","b2c.reshuffle":"Riorganizza le lettere dopo ogni tentativo","b2c.sizes":"Dimensioni (progressione radiale)","b2c.min":"Dimensione minima (centro):","b2c.max":"Dimensione massima (periferia):","b2c.prog":"Intensità della progressione:","b2c.cdot":"Dimensione del punto centrale:","b2c.excl":"Zona di esclusione centrale:","b2c.voiceLegend":"Voce e istruzioni","b2c.voice":"Voce","b2c.rate":"Velocità della voce:","b2c.vol":"Volume:","b2c.written":"Mostra anche la lettera/parola scritta","b2c.test":"🔊 Prova voce","b2c.words":"Parole (modalità Forma la parola)","b2c.wlen":"Lunghezza della parola:","b2c.pauseB":"Pausa tra parole/obiettivi:","b2c.bandAfter":"Mostra banda «Salta» dopo:"},
+  fr:{"cfg.dist":"Distance d'utilisation recommandée","cfg.diag":"Diagonale réelle de l'écran :","cfg.stim":"Stimuli","cfg.count":"Nombre de stimuli :","cfg.shape":"Forme du stimulus","cfg.optX":"Croix (✕)","cfg.optCircle":"Cercle de contrôle","cfg.stimSize":"Taille du stimulus :","cfg.radMin":"Zone d'apparition, depuis le centre :","cfg.radMax":"Zone d'apparition, jusqu'à la périphérie :","cfg.center":"Figure centrale (point de fixation)","cfg.centerShape":"Forme centrale","cfg.cross":"Croix","cfg.dot":"Point","cfg.centerSize":"Taille de la figure centrale :","cfg.colors":"Couleurs","cfg.colCenter":"Figure centrale","cfg.colStim":"Stimulus (X/cercle)","cfg.colGomet":"Gommette (ta marque)","cfg.colCursor":"Curseur","cfg.interact":"Interaction et marquage","cfg.mode":"Mode d'interaction","cfg.auto":"Automatique (détecter l'appareil)","cfg.pc":"PC / souris (curseur + clic)","cfg.touch":"Tactile (toucher du doigt)","cfg.tol":"Exigence de précision :","cfg.view":"Temps d'affichage après marquage :","cfg.isi":"Apparition aléatoire : jusqu'à","cfg.band":"Afficher la bande après :","cfg.opts":"Options","cfg.sound":"Signal sonore","cfg.vibr":"Vibration (téléphones compatibles)","cfg.adapt":"Adaptatif : renforcer les zones faibles","cfg.cam":"Supervision par caméra (aperçu)","cfg.reco":"Distance recommandée","cfg.fov":"Champ visuel à cette distance","cfg.recoWhy":"Distance minimale prudente qui maximise le champ visuel. Utilise l'appareil à l'horizontale.","b2c.modeLegend":"Modalité et niveau","b2c.mod":"Modalité","b2c.preset":"Niveau prédéfini","b2c.pCustom":"Personnalisé","b2c.pEasy":"Débutant","b2c.pMid":"Intermédiaire","b2c.pHard":"Avancé","b2c.countL":"Nombre de cibles :","b2c.countW":"Nombre de mots :","b2c.letters":"Lettres","b2c.visible":"Lettres visibles à l'écran :","b2c.case":"Majuscules / minuscules","b2c.upper":"Majuscules","b2c.lower":"Minuscules","b2c.mixed":"Mélangées","b2c.enye":"Inclure la lettre Ñ","b2c.reshuffle":"Réorganiser les lettres après chaque essai","b2c.sizes":"Tailles (progression radiale)","b2c.min":"Taille minimale (centre) :","b2c.max":"Taille maximale (périphérie) :","b2c.prog":"Intensité de la progression :","b2c.cdot":"Taille du point central :","b2c.excl":"Zone d'exclusion centrale :","b2c.voiceLegend":"Voix et consignes","b2c.voice":"Voix","b2c.rate":"Vitesse de la voix :","b2c.vol":"Volume :","b2c.written":"Afficher aussi la lettre/le mot écrit","b2c.test":"🔊 Tester la voix","b2c.words":"Mots (modalité Former le mot)","b2c.wlen":"Longueur du mot :","b2c.pauseB":"Pause entre mots/cibles :","b2c.bandAfter":"Afficher la bande « Passer » après :"},
+  de:{"cfg.dist":"Empfohlener Nutzungsabstand","cfg.diag":"Tatsächliche Bildschirmdiagonale:","cfg.stim":"Reize","cfg.count":"Anzahl der Reize:","cfg.shape":"Reizform","cfg.optX":"Kreuz (✕)","cfg.optCircle":"Kontrollkreis","cfg.stimSize":"Reizgröße:","cfg.radMin":"Erscheinungsbereich, ab der Mitte:","cfg.radMax":"Erscheinungsbereich, bis zur Peripherie:","cfg.center":"Zentrale Figur (Fixationspunkt)","cfg.centerShape":"Zentrale Form","cfg.cross":"Kreuz","cfg.dot":"Punkt","cfg.centerSize":"Größe der zentralen Figur:","cfg.colors":"Farben","cfg.colCenter":"Zentrale Figur","cfg.colStim":"Reiz (X/Kreis)","cfg.colGomet":"Klebepunkt (deine Marke)","cfg.colCursor":"Cursor","cfg.interact":"Interaktion und Markierung","cfg.mode":"Interaktionsmodus","cfg.auto":"Automatisch (Gerät erkennen)","cfg.pc":"PC / Maus (Cursor + Klick)","cfg.touch":"Touch (mit dem Finger tippen)","cfg.tol":"Präzisionsanforderung:","cfg.view":"Anzeigezeit nach dem Markieren:","cfg.isi":"Zufälliges Erscheinen: bis zu","cfg.band":"Band anzeigen nach:","cfg.opts":"Optionen","cfg.sound":"Akustisches Feedback","cfg.vibr":"Vibration (kompatible Geräte)","cfg.adapt":"Adaptiv: schwache Zonen verstärken","cfg.cam":"Kameraüberwachung (Vorschau)","cfg.reco":"Empfohlener Abstand","cfg.fov":"Gesichtsfeld bei diesem Abstand","cfg.recoWhy":"Kleinster sicherer Abstand mit maximalem Gesichtsfeld. Gerät im Querformat verwenden.","b2c.modeLegend":"Modus und Stufe","b2c.mod":"Modus","b2c.preset":"Voreingestellte Stufe","b2c.pCustom":"Benutzerdefiniert","b2c.pEasy":"Anfänger","b2c.pMid":"Mittel","b2c.pHard":"Fortgeschritten","b2c.countL":"Anzahl der Ziele:","b2c.countW":"Anzahl der Wörter:","b2c.letters":"Buchstaben","b2c.visible":"Sichtbare Buchstaben:","b2c.case":"Groß-/Kleinschreibung","b2c.upper":"Großbuchstaben","b2c.lower":"Kleinbuchstaben","b2c.mixed":"Gemischt","b2c.enye":"Buchstabe Ñ einschließen","b2c.reshuffle":"Buchstaben nach jedem Versuch neu anordnen","b2c.sizes":"Größen (radiale Progression)","b2c.min":"Mindestgröße (Zentrum):","b2c.max":"Maximalgröße (Peripherie):","b2c.prog":"Progressionsintensität:","b2c.cdot":"Größe des zentralen Punkts:","b2c.excl":"Zentrale Ausschlusszone:","b2c.voiceLegend":"Stimme und Anweisungen","b2c.voice":"Stimme","b2c.rate":"Sprechgeschwindigkeit:","b2c.vol":"Lautstärke:","b2c.written":"Buchstabe/Wort auch schriftlich zeigen","b2c.test":"🔊 Stimme testen","b2c.words":"Wörter (Wortbildungsmodus)","b2c.wlen":"Wortlänge:","b2c.pauseB":"Pause zwischen Wörtern/Zielen:","b2c.bandAfter":"Überspringen-Band zeigen nach:"},
+  ru:{"cfg.dist":"Рекомендуемое расстояние","cfg.diag":"Реальная диагональ экрана:","cfg.stim":"Стимулы","cfg.count":"Число стимулов:","cfg.shape":"Форма стимула","cfg.optX":"Крест (✕)","cfg.optCircle":"Контрольный круг","cfg.stimSize":"Размер стимула:","cfg.radMin":"Зона появления, от центра:","cfg.radMax":"Зона появления, до периферии:","cfg.center":"Центральная фигура (точка фиксации)","cfg.centerShape":"Центральная форма","cfg.cross":"Крест","cfg.dot":"Точка","cfg.centerSize":"Размер центральной фигуры:","cfg.colors":"Цвета","cfg.colCenter":"Центральная фигура","cfg.colStim":"Стимул (X/круг)","cfg.colGomet":"Наклейка (ваша отметка)","cfg.colCursor":"Курсор","cfg.interact":"Взаимодействие и отметки","cfg.mode":"Режим взаимодействия","cfg.auto":"Автоматически (определить устройство)","cfg.pc":"ПК / мышь (курсор + клик)","cfg.touch":"Сенсорный (касание пальцем)","cfg.tol":"Требование точности:","cfg.view":"Время показа после отметки:","cfg.isi":"Случайное появление: до","cfg.band":"Показывать полосу через:","cfg.opts":"Параметры","cfg.sound":"Звуковой сигнал","cfg.vibr":"Вибрация (совместимые телефоны)","cfg.adapt":"Адаптивно: усиливать слабые зоны","cfg.cam":"Наблюдение камерой (превью)","cfg.reco":"Рекомендуемое расстояние","cfg.fov":"Поле зрения на этом расстоянии","cfg.recoWhy":"Минимально безопасное расстояние с максимальным полем зрения. Держите устройство горизонтально.","b2c.modeLegend":"Режим и уровень","b2c.mod":"Режим","b2c.preset":"Предустановленный уровень","b2c.pCustom":"Пользовательский","b2c.pEasy":"Начальный","b2c.pMid":"Средний","b2c.pHard":"Продвинутый","b2c.countL":"Число целей:","b2c.countW":"Число слов:","b2c.letters":"Буквы","b2c.visible":"Видимых букв на экране:","b2c.case":"Прописные / строчные","b2c.upper":"Прописные","b2c.lower":"Строчные","b2c.mixed":"Смешанные","b2c.enye":"Включить букву Ñ","b2c.reshuffle":"Перемешивать буквы после каждой попытки","b2c.sizes":"Размеры (радиальная прогрессия)","b2c.min":"Минимальный размер (центр):","b2c.max":"Максимальный размер (периферия):","b2c.prog":"Интенсивность прогрессии:","b2c.cdot":"Размер центральной точки:","b2c.excl":"Центральная зона исключения:","b2c.voiceLegend":"Голос и инструкции","b2c.voice":"Голос","b2c.rate":"Скорость речи:","b2c.vol":"Громкость:","b2c.written":"Также показывать букву/слово","b2c.test":"🔊 Проверить голос","b2c.words":"Слова (режим составления)","b2c.wlen":"Длина слова:","b2c.pauseB":"Пауза между словами/целями:","b2c.bandAfter":"Полоса «Пропустить» через:"},
   };
   Object.keys(CFGK).forEach(function (c) { if (I18N[c]) Object.assign(I18N[c], CFGK[c]); });
   Object.assign(I18N.va, CFGK.ca);   // el valencià hereda las claves de config
@@ -3966,6 +4421,10 @@ button.link {
     return s;
   }
 
+  // Alias de t(): en algunos ámbitos `t` es una variable local (el objetivo
+  // en curso) y sombrea la función de traducción.
+  function t2() { return t.apply(null, arguments); }
+
   function flagHtml(l) {
     return l[2].indexOf("data:") === 0
       ? '<span class="flag"><img alt="" src="' + l[2] + '"></span>'
@@ -4009,6 +4468,8 @@ button.link {
     ['#cfg-stim-shape option[value="x"]', "cfg.optX"],
     ['#cfg-stim-shape option[value="circle"]', "cfg.optCircle"],
     ["#screen-config fieldset:nth-of-type(2) .field:nth-of-type(3)>span", "cfg.stimSize"],
+    ["#screen-config fieldset:nth-of-type(2) .field:nth-of-type(4)>span", "cfg.radMin"],
+    ["#screen-config fieldset:nth-of-type(2) .field:nth-of-type(5)>span", "cfg.radMax"],
     ["#screen-config fieldset:nth-of-type(3) legend", "cfg.center"],
     ["#screen-config fieldset:nth-of-type(3) .field:nth-of-type(1)>span", "cfg.centerShape"],
     ['#cfg-center-shape option[value="cross"]', "cfg.cross"],
@@ -4056,19 +4517,26 @@ button.link {
     ["#screen-b2-config fieldset:nth-of-type(3) .field:nth-of-type(3)>span", "b2c.prog"],
     ["#screen-b2-config fieldset:nth-of-type(3) .field:nth-of-type(4)>span", "b2c.cdot"],
     ["#screen-b2-config fieldset:nth-of-type(3) .field:nth-of-type(5)>span", "b2c.excl"],
-    ["#screen-b2-config fieldset:nth-of-type(4) legend", "b2c.voiceLegend"],
-    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(1)>span", "b2c.voice"],
-    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(2)>span", "b2c.rate"],
-    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(3)>span", "b2c.vol"],
-    ["#screen-b2-config fieldset:nth-of-type(4) .field-inline span", "b2c.written"],
+    ["#screen-b2-config fieldset:nth-of-type(4) legend", "b2c.micLegend"],
+    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(1)>span", "b2c.vsize"],
+    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(2)>span", "b2c.vshow"],
+    ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(3)>span", "b2c.vlimit"],
+    ["#b2-mic-test", "b2c.micTest"],
+    ['#b2-mode option[value="voice-letter"]', "b2.modC"],
+    ['#b2-hist-mode .seg[data-mode="voice-letter"]', "b2.modC"],
+    ["#screen-b2-config fieldset:nth-of-type(5) legend", "b2c.voiceLegend"],
+    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(1)>span", "b2c.voice"],
+    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(2)>span", "b2c.rate"],
+    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(3)>span", "b2c.vol"],
+    ["#screen-b2-config fieldset:nth-of-type(5) .field-inline span", "b2c.written"],
     ["#b2-test-voice", "b2c.test"],
-    ["#screen-b2-config fieldset:nth-of-type(5) legend", "b2c.words"],
-    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(1)>span", "b2c.wlen"],
-    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(2)>span", "b2c.pauseB"],
-    ["#screen-b2-config fieldset:nth-of-type(5) .field:nth-of-type(3)>span", "b2c.bandAfter"],
-    ["#screen-b2-config fieldset:nth-of-type(6) legend", "cfg.opts"],
-    ["#screen-b2-config fieldset:nth-of-type(6) .field-inline:nth-of-type(1) span", "cfg.sound"],
-    ["#screen-b2-config fieldset:nth-of-type(6) .field-inline:nth-of-type(2) span", "cfg.vibr"],
+    ["#screen-b2-config fieldset:nth-of-type(6) legend", "b2c.words"],
+    ["#screen-b2-config fieldset:nth-of-type(6) .field:nth-of-type(1)>span", "b2c.wlen"],
+    ["#screen-b2-config fieldset:nth-of-type(6) .field:nth-of-type(2)>span", "b2c.pauseB"],
+    ["#screen-b2-config fieldset:nth-of-type(6) .field:nth-of-type(3)>span", "b2c.bandAfter"],
+    ["#screen-b2-config fieldset:nth-of-type(7) legend", "cfg.opts"],
+    ["#screen-b2-config fieldset:nth-of-type(7) .field-inline:nth-of-type(1) span", "cfg.sound"],
+    ["#screen-b2-config fieldset:nth-of-type(7) .field-inline:nth-of-type(2) span", "cfg.vibr"],
     ["#screen-profiles .subtitle", "pf.subtitle"],
     ["#screen-profiles legend", "pf.create"],
     ["#profile-form .field:nth-of-type(1)>span", "pf.first"],
@@ -4195,6 +4663,30 @@ button.link {
     };
     sync("#cfg-count", "#out-count");
     sync("#cfg-stim-size", "#out-stim-size", (v) => parseFloat(v).toFixed(1));
+
+    // Anillo de aparición: los dos extremos se empujan entre sí para que
+    // nunca quede por debajo de la anchura mínima utilizable.
+    const radLo = $("#cfg-rad-min"), radHi = $("#cfg-rad-max");
+    const paintRad = () => {
+      $("#out-rad-min").textContent = radLo.value;
+      $("#out-rad-max").textContent = radHi.value;
+    };
+    radLo.addEventListener("input", () => {
+      if (parseFloat(radHi.value) - parseFloat(radLo.value) < RAD_MIN_SPAN) {
+        radHi.value = Math.min(100, parseFloat(radLo.value) + RAD_MIN_SPAN);
+        if (parseFloat(radHi.value) - parseFloat(radLo.value) < RAD_MIN_SPAN) {
+          radLo.value = parseFloat(radHi.value) - RAD_MIN_SPAN;
+        }
+      }
+      paintRad();
+    });
+    radHi.addEventListener("input", () => {
+      if (parseFloat(radHi.value) - parseFloat(radLo.value) < RAD_MIN_SPAN) {
+        radLo.value = Math.max(0, parseFloat(radHi.value) - RAD_MIN_SPAN);
+      }
+      paintRad();
+    });
+    paintRad();
     sync("#cfg-center-size", "#out-center-size", (v) => parseFloat(v).toFixed(1));
     sync("#cfg-tolerance", "#out-tolerance", toleranceLabel);
     sync("#cfg-view-time", "#out-view-time", (v) => parseFloat(v).toFixed(1));
@@ -4298,9 +4790,24 @@ button.link {
     $("#b2-wmin").addEventListener("input", wlenOut);
     $("#b2-wmax").addEventListener("input", wlenOut);
     wlenOut();
-    $("#b2-mode").addEventListener("input", () => {
+    sync("#b2-voice-size", "#b2-out-vsize", (v) => parseFloat(v).toFixed(1));
+    sync("#b2-voice-show", "#b2-out-vshow");
+    sync("#b2-voice-limit", "#b2-out-vlimit");
+    // Solo se muestran los ajustes de la modalidad elegida.
+    const b2ModeFields = () => {
+      const m = $("#b2-mode").value;
+      $("#b2-fs-voice").classList.toggle("hidden", m !== "voice-letter");
+      $("#b2-fs-words").classList.toggle("hidden", m !== "word-sequence");
       $("#b2-count-label").firstChild.textContent =
-        ($("#b2-mode").value === "word-sequence" ? t("b2c.countW") : t("b2c.countL")) + " ";
+        (m === "word-sequence" ? t("b2c.countW") : t("b2c.countL")) + " ";
+    };
+    $("#b2-mode").addEventListener("input", b2ModeFields);
+    b2ModeFields();
+    $("#b2-mic-test").addEventListener("click", () => {
+      const warn = $("#b2-mic-warn");
+      if (!micSupported()) { warn.textContent = t("ex.micNoSupport"); return; }
+      warn.textContent = t("ex.micAsking");
+      requestMic(function (okMic) { warn.textContent = okMic ? t("ex.micOk") : t("ex.micDenied"); });
     });
     $("#b2-preset").addEventListener("input", () => {
       const p = B2_PRESETS[$("#b2-preset").value];
@@ -4311,6 +4818,7 @@ button.link {
     try {
       if (window.speechSynthesis) {
         speechSynthesis.onvoiceschanged = function () {
+          voicesLoaded = true;
           populateVoices();
           if ($("#screen-b2-config").classList.contains("active") && speechAvailable()) {
             $("#b2-voice-warn").textContent = "";
@@ -4328,7 +4836,18 @@ button.link {
     $("#b2-config-form").addEventListener("submit", (e) => {
       e.preventDefault();
       unlockAudio();
-      b2Start(b2ReadConfig());
+      const cfgB2 = b2ReadConfig();
+      if (cfgB2.mode !== "voice-letter") { b2Start(cfgB2); return; }
+      // La modalidad por voz necesita el micrófono: se pide el permiso ANTES
+      // de entrar al ejercicio. Si se deniega, se avisa y se puede responder
+      // con el teclado.
+      const warn = $("#b2-mic-warn");
+      warn.textContent = t("ex.micAsking");
+      requestMic(function (okMic) {
+        warn.textContent = okMic ? t("ex.micOk")
+          : (micSupported() ? t("ex.micDenied") : t("ex.micNoSupport"));
+        b2Start(cfgB2);
+      });
     });
     $("#b2-btn-history").addEventListener("click", () => { b2RenderHistory(); showScreen("#screen-b2-history"); });
     $("#b2-btn-menu").addEventListener("click", () => openMenu());
