@@ -157,6 +157,31 @@ modalidad **Formar palabra**:
 - Un motor de voz presente pero **sin voces instaladas** dejaba al usuario sin
   instrucción; ahora se detecta y se muestra la palabra o letra por escrito.
 
+## Publicación en https:// (necesaria para el micrófono)
+
+El reconocimiento de voz solo funciona en un **origen seguro `https://`**. Este
+repositorio incluye `.github/workflows/pages.yml`, que publica `index.html` en
+GitHub Pages en cada cambio de la rama de trabajo.
+
+**Activación, una sola vez** (el token de Actions no tiene permiso para crearla):
+
+1. En el repositorio: **Settings → Pages → Build and deployment**.
+2. En **Source**, elige **GitHub Actions**.
+3. Vuelve a lanzar el flujo en **Actions → Publicar en GitHub Pages →
+   Run workflow**. A partir de ahí se despliega solo.
+
+La aplicación queda en
+`https://<usuario>.github.io/<repositorio>/`.
+
+Como alternativa sin flujo, en **Source** puede elegirse **Deploy from a
+branch**, con la rama de trabajo y la carpeta `/ (root)`: `index.html` ya es la
+página de inicio y el `.nojekyll` de la raíz evita cualquier procesado.
+
+> **Los datos no se trasladan solos.** El navegador guarda las sesiones por
+> origen, así que lo registrado abriendo el archivo en local **no aparece** en
+> la dirección `https://` (ni al revés). Para llevarlas de un sitio a otro, usa
+> **Exportar perfil (JSON)** en el menú y después **Importar copia**.
+
 ## Privacidad
 
 Los datos se almacenan localmente en este dispositivo; no se envía nada a
