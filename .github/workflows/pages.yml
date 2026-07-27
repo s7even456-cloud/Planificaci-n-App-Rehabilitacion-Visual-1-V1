@@ -37,13 +37,21 @@ jobs:
           cp index.html _site/index.html
           touch _site/.nojekyll
 
+      # El token de Actions no puede CREAR el sitio de Pages: esa activación
+      # inicial solo la puede hacer el dueño del repositorio, una única vez.
       - name: Configurar Pages
+        id: configurar
+        continue-on-error: true
         uses: actions/configure-pages@v5
-        with:
-          # Intenta activar Pages automáticamente. Si la organización o la
-          # cuenta no lo permite, se activa a mano en Ajustes → Pages
-          # (Source: GitHub Actions) y se vuelve a lanzar este flujo.
-          enablement: true
+
+      - name: Pages todavía no está activado
+        if: steps.configurar.outcome == 'failure'
+        run: |
+          echo "::error::Pages no está activado en este repositorio."
+          echo "Actívalo una sola vez en Settings → Pages → Build and deployment"
+          echo "→ Source: GitHub Actions. Después vuelve a lanzar este flujo"
+          echo "(Actions → Publicar en GitHub Pages → Run workflow)."
+          exit 1
 
       - name: Subir la aplicación
         uses: actions/upload-pages-artifact@v3
