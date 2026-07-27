@@ -173,6 +173,28 @@ input[type="text"] {
 .b2-controls .ghost { padding: 8px 12px; font-size: 0.85rem; opacity: 0.85; }
 .b2-hud { z-index: 5; }
 
+/* Teclado en pantalla de la modalidad por voz: respuesta alternativa cuando
+   el micrófono no está disponible (imprescindible en móvil, sin teclado). */
+.b2-keypad {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5vmin;
+  padding: 0.8vmin 0.8vmin 3.2vmin;
+  background: rgba(255,255,255,0.94);
+  border-top: 2px solid var(--border);
+  z-index: 6;
+}
+.b2-keypad button {
+  min-width: 5.4vmin; padding: 0.9vmin 1.1vmin;
+  font-size: 2.6vmin; font-weight: 800; line-height: 1;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--ink); cursor: pointer;
+}
+.b2-keypad button:active { background: var(--accent); color: #fff; }
+.b2-keypad .kp-note {
+  width: 100%; text-align: center; font-size: 1.7vmin; color: var(--ink-soft);
+  margin-bottom: 0.4vmin;
+}
+
 /* ---------- Estadísticas por letra ---------- */
 .letter-stats { overflow-x: auto; }
 .letter-stats table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -600,7 +622,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.3</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.3.1</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -1074,9 +1096,11 @@ button.link {
     <div id="b2-controls" class="b2-controls">
       <button type="button" id="b2-repeat" class="ghost">🔊 Repetir</button>
       <button type="button" id="b2-word-restart" class="ghost hidden">↺ Reiniciar palabra</button>
+      <button type="button" id="b2-keys-btn" class="ghost hidden">⌨ Teclado</button>
       <button type="button" id="b2-pause-btn" class="ghost">⏸ Pausa</button>
       <button type="button" id="b2-finish" class="ghost danger">✕ Finalizar</button>
     </div>
+    <div id="b2-keypad" class="b2-keypad hidden"></div>
     <div class="hud b2-hud">
       <span id="b2-progress">0 / 0</span>
       <span class="hud-hint" id="b2-hint">Mantén la mirada en el punto central</span>
@@ -1194,7 +1218,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.3";
+  const APP_VERSION = "5.3.1";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -2768,6 +2792,7 @@ button.link {
   }
 
   let b2Rec = null, b2RecWanted = false;
+  let b2MicOk = false;              // resultado de la última petición de permiso
   function b2RecStart() {
     const Ctor = speechRecCtor();
     if (!Ctor) return false;
@@ -2793,8 +2818,14 @@ button.link {
       r.onerror = function (ev) {
         const err = ev && ev.error;
         if (err === "not-allowed" || err === "service-not-allowed") {
+          // El reconocimiento no va a funcionar en esta sesión: se ofrece el
+          // teclado en pantalla para que el ejercicio pueda continuar.
           b2RecWanted = false;
           $("#b2-hint").textContent = t("ex.micDenied");
+          if (b2 && b2.config.mode === "voice-letter" && !b2KeypadOn) {
+            b2ShowKeypad(true);
+            if (b2.cur && !b2.cur.answered) b2VoiceShow();   // recolocar sobre el teclado
+          }
         }
       };
       r.onend = function () {
@@ -2812,13 +2843,32 @@ button.link {
     try { b2Rec.onend = null; b2Rec.onresult = null; b2Rec.stop(); } catch (e) { /* nada */ }
     b2Rec = null;
   }
-  // Solicitud explícita de permiso antes de arrancar la sesión.
+  // Motivo por el que el micrófono no puede usarse, ANTES de intentarlo.
+  // El caso más habitual: abrir el archivo directamente (file:// o content://),
+  // donde el navegador no concede micrófono ni reconocimiento de voz.
+  function micBlockedReason() {
+    const proto = location.protocol;
+    if (proto === "file:" || proto === "content:") return "ex.micFile";
+    if (window.isSecureContext === false) return "ex.micInsecure";
+    if (!micSupported()) return "ex.micNoSupport";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return "ex.micNoApi";
+    return null;
+  }
+
+  // Solicitud explícita de permiso antes de arrancar la sesión. Devuelve
+  // (ok, claveDeMensaje) para poder explicar exactamente qué ha fallado.
   function requestMic(onDone) {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { onDone(micSupported()); return; }
+    const blocked = micBlockedReason();
+    if (blocked) { onDone(false, blocked); return; }
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
       try { stream.getTracks().forEach(function (tr) { tr.stop(); }); } catch (e) { /* nada */ }
-      onDone(true);
-    }, function () { onDone(false); });
+      onDone(true, null);
+    }, function (err) {
+      const name = err && err.name;
+      if (name === "NotFoundError" || name === "DevicesNotFoundError") { onDone(false, "ex.micNoDevice"); return; }
+      if (name === "NotReadableError" || name === "TrackStartError") { onDone(false, "ex.micBusy"); return; }
+      onDone(false, "ex.micDenied");
+    });
   }
 
   // =====================================================================
@@ -3127,7 +3177,11 @@ button.link {
     // fijación es una CRUZ central, como pidió el uso clínico del ejercicio.
     const isVoice = cfg.mode === "voice-letter";
     $("#b2-repeat").classList.toggle("hidden", isVoice);
+    $("#b2-keys-btn").classList.toggle("hidden", !isVoice);
     fix.classList.toggle("cross", isVoice);
+    // Sin micrófono operativo se abre directamente el teclado en pantalla:
+    // así el ejercicio se puede hacer igual en el móvil.
+    b2ShowKeypad(isVoice && !b2MicOk);
     // Texto de la banda perimetral según la modalidad.
     const skipTxt = cfg.mode === "word-sequence" ? t("ex.bandWord") : t("ex.bandFind");
     document.querySelectorAll("#b2-skip-frame .b2-skip-txt").forEach((el) => { el.textContent = skipTxt; });
@@ -3163,7 +3217,7 @@ button.link {
     if (b2.config.mode !== "voice-letter") b2Layout();
     runCountdown(function () {
       b2.state = "running";
-      if (b2.config.mode === "voice-letter") b2RecStart();
+      if (b2.config.mode === "voice-letter" && b2MicOk) b2RecStart();
       b2NextTarget();
     }, "#b2-countdown");
   }
@@ -3228,7 +3282,7 @@ button.link {
       b2.cur = { target: t, errors: [], t0: b2Now(), audioRepeats: 0, answered: false };
       b2.state = "running";
       $("#b2-progress").textContent = (b2.ti + 1) + " / " + b2.targets.length;
-      $("#b2-hint").textContent = t2("ex.voiceHint");
+      $("#b2-hint").textContent = b2KeypadOn ? t2("ex.keypadHint") : t2("ex.voiceHint");
       b2VoiceShow();
       b2ArmSkipFrame();
       return;
@@ -3243,6 +3297,40 @@ button.link {
     $("#b2-progress").textContent = (b2.ti + 1) + " / " + b2.targets.length;
     b2Announce(false);
     b2ArmSkipFrame();
+  }
+
+  // ---- Teclado en pantalla (respuesta sin micrófono) ----
+  // Es la vía imprescindible en móvil: sin teclado físico y con el micrófono
+  // bloqueado, el ejercicio quedaría sin forma de responder.
+  let b2KeypadOn = false;
+  function b2BuildKeypad() {
+    const pad = $("#b2-keypad");
+    pad.innerHTML = "";
+    const note = document.createElement("div");
+    note.className = "kp-note";
+    note.textContent = t("ex.keypadHint");
+    pad.appendChild(note);
+    exAlphabet().filter((l) => l !== "Ñ" || b2.config.enye).forEach((l) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = l;
+      b.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        b2VoiceAnswer(l, t("ex.byKeypad"));
+      });
+      pad.appendChild(b);
+    });
+  }
+  function b2ShowKeypad(on) {
+    b2KeypadOn = !!on;
+    const pad = $("#b2-keypad");
+    if (on) { b2BuildKeypad(); pad.classList.remove("hidden"); }
+    else { pad.classList.add("hidden"); pad.innerHTML = ""; }
+  }
+  // Altura ocupada por el teclado, para no dibujar letras debajo de él.
+  function b2KeypadPx() {
+    const pad = $("#b2-keypad");
+    return (b2KeypadOn && !pad.classList.contains("hidden")) ? pad.offsetHeight : 0;
   }
 
   // ---- Modalidad por voz: una sola letra, en posición aleatoria ----
@@ -3262,10 +3350,11 @@ button.link {
     const margin = b2FramePx() + 4 + box / 2;
     const exclPx = (cfg.excl / 100) * vmin;
     const cx = W / 2, cy = H / 2;
-    let x = cx + exclPx + box, y = cy;
+    const bottom = H - margin - b2KeypadPx();      // no invadir el teclado
+    let x = cx + exclPx + box, y = Math.min(cy, bottom);
     for (let i = 0; i < 500; i++) {
       const px = margin + Math.random() * Math.max(1, W - 2 * margin);
-      const py = margin + Math.random() * Math.max(1, H - 2 * margin);
+      const py = margin + Math.random() * Math.max(1, bottom - margin);
       if (Math.hypot(px - cx, py - cy) < exclPx + box / 2) continue;   // no tapar la cruz
       if (py < 64 && px > W - 420) continue;                           // esquina de controles
       x = px; y = py; break;
@@ -3523,7 +3612,7 @@ button.link {
       b2Timer = setTimeout(b2NextTarget, 500);
     } else if (b2.config.mode === "voice-letter") {
       b2.state = "running";
-      b2RecStart();
+      if (b2MicOk) b2RecStart();
       if (b2.cur && !b2.cur.answered) {          // reanudar el tiempo de respuesta
         b2.cur.t0 = b2Now();
         if (b2.config.voiceLimit > 0) {
@@ -3557,7 +3646,7 @@ button.link {
 
   function b2Cleanup() {
     b2ClearTimer(); clearCdTimer(); b2ClearSkipTimer();
-    b2ClearVoiceTimers(); b2RecStop();
+    b2ClearVoiceTimers(); b2RecStop(); b2ShowKeypad(false);
     $("#b2-fixation").classList.remove("cross");
     b2HideSkipFrame();
     $("#b2-countdown").classList.add("hidden");
@@ -4006,6 +4095,13 @@ button.link {
     "ex.micDenied":"⚠ Sin acceso al micrófono. Puedes responder pulsando la letra en el teclado.",
     "ex.micNoSupport":"⚠ Este navegador no reconoce voz. Responde pulsando la letra en el teclado (Chrome sí lo admite).",
     "ex.micAsking":"Solicitando permiso del micrófono…","ex.micOk":"✔ Micrófono disponible.",
+    "ex.micFile":"⚠ Has abierto el archivo directamente en el dispositivo (file://). Por seguridad el navegador no concede el micrófono así. Puedes responder con el teclado en pantalla; para responder hablando, abre la aplicación desde una dirección https://.",
+    "ex.micInsecure":"⚠ La página no está en un origen seguro (https://). El navegador no concede el micrófono; usa el teclado en pantalla.",
+    "ex.micNoApi":"⚠ Este navegador no permite acceder al micrófono. Usa el teclado en pantalla.",
+    "ex.micNoDevice":"⚠ No se ha detectado ningún micrófono. Usa el teclado en pantalla.",
+    "ex.micBusy":"⚠ El micrófono está ocupado por otra aplicación. Ciérrala o usa el teclado en pantalla.",
+    "ex.keypadHint":"Toca la letra que ves en la pantalla","ex.byKeypad":"(teclado en pantalla)",
+    "ex.keypadBtn":"⌨ Teclado",
     "b2c.micLegend":"Decir la letra en voz alta (micrófono)","b2c.vsize":"Tamaño de la letra:",
     "b2c.vshow":"Tiempo visible de la letra:","b2c.vlimit":"Tiempo máximo de respuesta:",
     "b2c.micTest":"🎤 Comprobar micrófono",
@@ -4057,6 +4153,13 @@ button.link {
     "ex.micDenied":"⚠ No microphone access. You can answer by pressing the letter on the keyboard.",
     "ex.micNoSupport":"⚠ This browser has no speech recognition. Answer by pressing the letter on the keyboard (Chrome supports it).",
     "ex.micAsking":"Requesting microphone permission…","ex.micOk":"✔ Microphone available.",
+    "ex.micFile":"⚠ You opened the file directly on the device (file://). For security reasons the browser will not grant microphone access this way. You can answer with the on-screen keypad; to answer by speaking, open the app from an https:// address.",
+    "ex.micInsecure":"⚠ The page is not on a secure origin (https://). The browser will not grant microphone access; use the on-screen keypad.",
+    "ex.micNoApi":"⚠ This browser cannot access the microphone. Use the on-screen keypad.",
+    "ex.micNoDevice":"⚠ No microphone detected. Use the on-screen keypad.",
+    "ex.micBusy":"⚠ The microphone is in use by another app. Close it or use the on-screen keypad.",
+    "ex.keypadHint":"Tap the letter you can see on the screen","ex.byKeypad":"(on-screen keypad)",
+    "ex.keypadBtn":"⌨ Keypad",
     "b2c.micLegend":"Say the letter out loud (microphone)","b2c.vsize":"Letter size:",
     "b2c.vshow":"Letter visible for:","b2c.vlimit":"Maximum answer time:",
     "b2c.micTest":"🎤 Check microphone",
@@ -4522,6 +4625,7 @@ button.link {
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(2)>span", "b2c.vshow"],
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(3)>span", "b2c.vlimit"],
     ["#b2-mic-test", "b2c.micTest"],
+    ["#b2-keys-btn", "ex.keypadBtn"],
     ['#b2-mode option[value="voice-letter"]', "b2.modC"],
     ['#b2-hist-mode .seg[data-mode="voice-letter"]', "b2.modC"],
     ["#screen-b2-config fieldset:nth-of-type(5) legend", "b2c.voiceLegend"],
@@ -4800,14 +4904,21 @@ button.link {
       $("#b2-fs-words").classList.toggle("hidden", m !== "word-sequence");
       $("#b2-count-label").firstChild.textContent =
         (m === "word-sequence" ? t("b2c.countW") : t("b2c.countL")) + " ";
+      if (m === "voice-letter") {
+        // Aviso por adelantado si el micrófono no va a poder usarse.
+        const why = micBlockedReason();
+        $("#b2-mic-warn").textContent = why ? t(why) : "";
+      }
     };
     $("#b2-mode").addEventListener("input", b2ModeFields);
     b2ModeFields();
     $("#b2-mic-test").addEventListener("click", () => {
       const warn = $("#b2-mic-warn");
-      if (!micSupported()) { warn.textContent = t("ex.micNoSupport"); return; }
       warn.textContent = t("ex.micAsking");
-      requestMic(function (okMic) { warn.textContent = okMic ? t("ex.micOk") : t("ex.micDenied"); });
+      requestMic(function (okMic, why) {
+        b2MicOk = okMic;
+        warn.textContent = okMic ? t("ex.micOk") : t(why || "ex.micDenied");
+      });
     });
     $("#b2-preset").addEventListener("input", () => {
       const p = B2_PRESETS[$("#b2-preset").value];
@@ -4843,9 +4954,9 @@ button.link {
       // con el teclado.
       const warn = $("#b2-mic-warn");
       warn.textContent = t("ex.micAsking");
-      requestMic(function (okMic) {
-        warn.textContent = okMic ? t("ex.micOk")
-          : (micSupported() ? t("ex.micDenied") : t("ex.micNoSupport"));
+      requestMic(function (okMic, why) {
+        b2MicOk = okMic;
+        warn.textContent = okMic ? t("ex.micOk") : t(why || "ex.micDenied");
         b2Start(cfgB2);
       });
     });
@@ -4855,6 +4966,10 @@ button.link {
     // ---- Bloque 2: controles de sesión ----
     $("#b2-repeat").addEventListener("click", () => { if (b2 && b2.state === "running") b2Announce(true); });
     $("#b2-word-restart").addEventListener("click", b2WordRestart);
+    $("#b2-keys-btn").addEventListener("click", () => {
+      b2ShowKeypad(!b2KeypadOn);
+      if (b2 && b2.cur && !b2.cur.answered && b2.state === "running") b2VoiceShow();
+    });
     $("#b2-pause-btn").addEventListener("click", b2Pause);
     $("#b2-resume").addEventListener("click", b2Resume);
     $("#b2-finish").addEventListener("click", b2Finish);

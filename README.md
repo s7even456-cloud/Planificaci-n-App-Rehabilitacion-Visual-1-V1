@@ -1,4 +1,4 @@
-# Plataforma de Ejercicios de Rehabilitación Visual (v5.3)
+# Plataforma de Ejercicios de Rehabilitación Visual (v5.3.1)
 
 Plataforma **modular y multiusuario** de ejercicios de exploración y atención
 visual, pensada para rehabilitación del campo visual (p. ej. hemianopsia) bajo
@@ -65,6 +65,16 @@ sin solaparse, con **tamaño progresivo según la distancia al centro**
   puede responder pulsando la letra en el teclado. Su dashboard e historial
   recogen precisión, aciertos, errores (con la letra dicha en la columna de
   confusiones), sin respuesta, tiempo medio, hemicampos y mapa de errores.
+  > **Micrófono y origen seguro.** Los navegadores solo conceden micrófono y
+  > reconocimiento de voz en un **origen seguro `https://`**. Si el archivo se
+  > abre directamente desde el dispositivo (`file://`), Chrome lo bloquea: la
+  > app lo detecta, lo explica antes de empezar y abre automáticamente un
+  > **teclado en pantalla con el alfabeto** para responder tocando la letra,
+  > de modo que el ejercicio se puede realizar igual en móvil (donde no hay
+  > teclado físico). El botón «⌨ Teclado» permite mostrarlo u ocultarlo en
+  > cualquier momento, y las letras nunca se dibujan bajo él. Para responder
+  > hablando basta con servir el mismo `index.html` desde una dirección
+  > `https://` (por ejemplo, GitHub Pages).
 - Controles de sesión: repetir, pausar/reanudar, saltar, finalizar (con
   confirmación; la sesión queda «completada» o «interrumpida» conservando los
   intentos). Pantalla completa, Wake Lock, sonido/vibración, cuenta atrás.
