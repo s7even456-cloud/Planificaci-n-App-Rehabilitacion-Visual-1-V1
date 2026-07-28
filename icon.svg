@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Rehabilitación Visual">
+  <rect width="512" height="512" rx="96" fill="#0f6b53"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#fff" stroke-width="16"
+          stroke-dasharray="30 26" opacity=".75"/>
+  <g stroke="#fff" stroke-width="26" stroke-linecap="round">
+    <path d="M256 92v54M256 366v54M92 256h54M366 256h54"/>
+  </g>
+  <circle cx="256" cy="256" r="34" fill="#fff"/>
+</svg>
