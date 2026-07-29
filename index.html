@@ -682,7 +682,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.7</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.8</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -1326,7 +1326,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.7";
+  const APP_VERSION = "5.8";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -3077,14 +3077,32 @@ button.link {
   }
 
   // Pasos concretos para reactivar el permiso, según cómo se esté usando.
-  function guiaDesbloqueo() {
+  function guiaDesbloqueo(motivo) {
     const sitio = location.host || location.protocol;
+    // «sistema»: Android tiene denegado el micrófono a la propia aplicación o
+    // al navegador, así que la petición se rechaza sin llegar a preguntar.
+    // Ese caso se reconoce porque el permiso del SITIO no está denegado y aun
+    // así getUserMedia falla al instante con NotAllowedError.
+    if (motivo === "sistema") {
+      const pasos = [t("mic.sysStep1"), t("mic.sysStep2"), t("mic.sysStep3"), t("mic.sysStep4")];
+      return "<b>" + t("mic.sysTitle") + "</b><p>" + t("mic.sysWhy") + "</p><ol><li>" +
+        pasos.join("</li><li>") + "</li></ol>";
+    }
     const pasos = esAppInstalada()
       ? [t("mic.stepApp1"), t("mic.stepApp2", sitio), t("mic.stepApp3")]
       : [t("mic.stepWeb1"), t("mic.stepWeb2", sitio), t("mic.stepWeb3")];
     return "<b>" + t("mic.howtoTitle") + "</b><ol><li>" + pasos.join("</li><li>") + "</li></ol>";
   }
 
+  // Queda a true cuando se ha mostrado la guía por un fallo real, para que el
+  // repintado del estado no la esconda justo después de enseñarla.
+  let micGuiaFijada = false;
+  function mostrarGuiaMic(motivo) {
+    const guia = $("#b2-mic-howto");
+    guia.innerHTML = guiaDesbloqueo(motivo);
+    guia.classList.remove("hidden");
+    micGuiaFijada = true;
+  }
   function pintarEstadoMic() {
     const caja = $("#b2-mic-state");
     if (!caja) return;
@@ -3096,18 +3114,19 @@ button.link {
         caja.classList.add("ok");
         btn.classList.add("hidden");
         guia.classList.add("hidden");
+        micGuiaFijada = false;
       } else if (estado === "denied") {
         caja.textContent = t("mic.stDenied");
         caja.classList.add("no");
         btn.classList.remove("hidden");
         btn.textContent = t("mic.retry");
-        guia.innerHTML = guiaDesbloqueo();
+        guia.innerHTML = guiaDesbloqueo("sitio");
         guia.classList.remove("hidden");
       } else {
         caja.textContent = t("mic.stPrompt");
         btn.classList.remove("hidden");
         btn.textContent = t("mic.allow");
-        guia.classList.add("hidden");
+        if (!micGuiaFijada) guia.classList.add("hidden");
       }
     });
   }
@@ -3124,6 +3143,7 @@ button.link {
     L.push("Dictado del navegador: " + si(micSupported()));
     L.push("Voz entrenada: " + voiceTrainedCount() + " letras");
     L.push("Navegador: " + (navigator.userAgent || "?"));
+    L.push("Instalada como aplicación: " + si(esAppInstalada()));
     const cerrar = function () {
       const txt = L.join("\n");
       done(txt);
@@ -3132,6 +3152,8 @@ button.link {
       L.push("Resultado: el navegador no ofrece acceso al micrófono en esta dirección.");
       cerrar(); return;
     }
+    micPermissionState(function (permiso) {
+    L.push("Permiso del sitio: " + permiso);
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
       let n = 0;
       try { n = stream.getAudioTracks().length; } catch (e) { /* nada */ }
@@ -3144,11 +3166,16 @@ button.link {
       L.push("   detalle: " + ((err && err.message) || "sin detalle"));
       if (!window.isSecureContext) {
         L.push("Causa: la página no está en un origen seguro.");
+      } else if ((err && err.name) === "NotAllowedError" && permiso !== "denied") {
+        // El sitio no está bloqueado y aun así se rechaza al instante.
+        L.push("Causa: el permiso de micrófono está denegado EN EL SISTEMA");
+        L.push("(Android) a esta aplicación o al navegador, no en la web.");
       } else if (location.protocol === "file:" || location.protocol === "content:") {
         L.push("Causa probable: en móvil, abrir el archivo directamente no permite");
         L.push("el micrófono aunque el navegador diga que el contexto es seguro.");
       }
       cerrar();
+    });
     });
   }
 
@@ -4737,6 +4764,13 @@ button.link {
     "mic.allow":"🎤 Permitir el micrófono","mic.retry":"🔄 Ya lo he desbloqueado, comprobar",
     "mic.blocked":"El navegador ya no puede volver a preguntarte porque el permiso está denegado. Reactívalo con estos pasos y vuelve a pulsar el botón.",
     "mic.howtoTitle":"Cómo desbloquear el micrófono",
+    "mic.sysBlocked":"El bloqueo NO está en la web: Android tiene denegado el micrófono a esta aplicación. Por eso no aparece ninguna ventana de permiso.",
+    "mic.sysTitle":"El micrófono está bloqueado por Android, no por la web",
+    "mic.sysWhy":"La página no está denegada, pero la petición se rechaza al instante: eso ocurre cuando el sistema no le concede el micrófono a la aplicación. Se arregla en los ajustes del teléfono.",
+    "mic.sysStep1":"Abre Ajustes del teléfono → Aplicaciones (o «Gestión de aplicaciones»).",
+    "mic.sysStep2":"Busca «Rehab Visual» y entra en Permisos → Micrófono → Permitir. Si no aparece el permiso ahí, sigue al paso siguiente.",
+    "mic.sysStep3":"Busca «Chrome» en esa misma lista de aplicaciones y entra en Permisos → Micrófono → Permitir.",
+    "mic.sysStep4":"Vuelve aquí y pulsa «Permitir el micrófono» otra vez: ahora sí debería salir la ventana.",
     "mic.stepApp1":"Mantén pulsado el icono de la aplicación en la pantalla de inicio y abre «Información de la aplicación».",
     "mic.stepApp2":"Entra en «Permisos» → «Micrófono» y elige «Permitir». Si no aparece, ábrelo en Chrome: ⋮ → Configuración → Configuración de sitios → Micrófono → {0} → Permitir.",
     "mic.stepApp3":"Vuelve aquí y pulsa el botón de comprobar.",
@@ -4822,6 +4856,13 @@ button.link {
     "mic.allow":"🎤 Allow the microphone","mic.retry":"🔄 I have unblocked it, check again",
     "mic.blocked":"The browser can no longer ask you because the permission is denied. Re-enable it with these steps and press the button again.",
     "mic.howtoTitle":"How to unblock the microphone",
+    "mic.sysBlocked":"The block is NOT in the web page: Android is denying the microphone to this app. That is why no permission dialog appears.",
+    "mic.sysTitle":"The microphone is blocked by Android, not by the web",
+    "mic.sysWhy":"The page is not denied, yet the request is refused instantly: that happens when the system does not grant the microphone to the app. It is fixed in the phone settings.",
+    "mic.sysStep1":"Open the phone Settings → Apps (or «App management»).",
+    "mic.sysStep2":"Find «Rehab Visual» and open Permissions → Microphone → Allow. If the permission is not there, go to the next step.",
+    "mic.sysStep3":"Find «Chrome» in that same app list and open Permissions → Microphone → Allow.",
+    "mic.sysStep4":"Come back here and press «Allow the microphone» again: the dialog should appear now.",
     "mic.stepApp1":"Long-press the app icon on the home screen and open «App info».",
     "mic.stepApp2":"Go to «Permissions» → «Microphone» and choose «Allow». If it is not there, open it in Chrome: ⋮ → Settings → Site settings → Microphone → {0} → Allow.",
     "mic.stepApp3":"Come back here and press the check button.",
@@ -5653,17 +5694,22 @@ button.link {
         if (estado === "denied") {
           // El navegador ya no volverá a preguntar: hay que reactivarlo a mano.
           warn.textContent = t("mic.blocked");
-          $("#b2-mic-howto").innerHTML = guiaDesbloqueo();
-          $("#b2-mic-howto").classList.remove("hidden");
+          mostrarGuiaMic("sitio");
           return;
         }
         warn.textContent = t("ex.micAsking");
         requestMic(function (okMic, why) {
           b2MicOk = okMic;
-          warn.textContent = okMic ? t("ex.micOk") : t(why || "ex.micDenied");
           if (!okMic) {
-            $("#b2-mic-howto").innerHTML = guiaDesbloqueo();
-            $("#b2-mic-howto").classList.remove("hidden");
+            // El sitio NO estaba denegado y aun así se rechaza: el bloqueo
+            // viene del sistema, no del navegador.
+            const delSistema = (why === "ex.micDenied" && estado !== "denied");
+            warn.textContent = delSistema ? t("mic.sysBlocked") : t(why || "ex.micDenied");
+            mostrarGuiaMic(delSistema ? "sistema" : "sitio");
+          } else {
+            warn.textContent = t("ex.micOk");
+            micGuiaFijada = false;
+            $("#b2-mic-howto").classList.add("hidden");
           }
           pintarEstadoMic();
         });
