@@ -666,10 +666,14 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.5</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.6</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
+      <div id="restore-box" class="legacy-notice hidden"></div>
+      <div class="review-actions" style="margin-bottom:14px">
+        <button type="button" id="pf-import" class="ghost">📂 Importar copia de seguridad</button>
+      </div>
       <div id="profile-list" class="profile-list"></div>
       <fieldset>
         <legend>Crear perfil nuevo</legend>
@@ -1302,7 +1306,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.5";
+  const APP_VERSION = "5.6";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -1427,6 +1431,43 @@ button.link {
       localStorage.setItem(MIG_KEY, "1");
     } catch (e) { /* la migración nunca debe bloquear el arranque */ }
   }
+  // ¿Hay datos de sesiones anteriores guardados en ESTE origen? Se mira todo
+  // lo que puede recuperarse: perfiles ya creados, sesiones sin asignar y la
+  // copia con la clave antigua.
+  function datosRecuperables() {
+    const perfiles = allProfiles();
+    const sesiones = allStoredSessions();
+    let antiguas = 0;
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (Array.isArray(raw)) antiguas = raw.length;
+    } catch (e) { /* sin copia antigua */ }
+    return {
+      perfiles: perfiles.length,
+      sesiones: sesiones.length,
+      sinAsignar: sesiones.filter(function (x) { return x.profileId == null; }).length,
+      antiguas: antiguas,
+    };
+  }
+
+  // Aviso en la pantalla de perfiles: qué se ha encontrado y qué se puede hacer.
+  function pintarRestauracion() {
+    const box = $("#restore-box");
+    if (!box) return;
+    const d = datosRecuperables();
+    // Si ya hay perfiles con sesiones no hace falta decir nada.
+    if (d.perfiles && d.sesiones) { box.classList.add("hidden"); box.textContent = ""; return; }
+    if (d.sesiones || d.antiguas) {
+      box.textContent = t("imp.found", d.sesiones + d.antiguas);
+      box.classList.remove("hidden");
+    } else if (!d.perfiles) {
+      box.textContent = t("imp.none");
+      box.classList.remove("hidden");
+    } else {
+      box.classList.add("hidden");
+    }
+  }
+
   function unassignedLegacySessions() {
     return allStoredSessions().filter((s) => s.profileId === null || s.profileId === undefined);
   }
@@ -2631,6 +2672,7 @@ button.link {
       });
       wrap.appendChild(card);
     });
+    pintarRestauracion();
     // Aviso de datos de la versión anterior pendientes de asignar.
     const un = unassignedLegacySessions();
     const notice = $("#legacy-notice");
@@ -4606,6 +4648,10 @@ button.link {
     "b2c.vshow":"Tiempo visible de la letra:","b2c.vlimit":"Tiempo máximo de respuesta:",
     "b2c.micTest":"🎤 Comprobar micrófono","b2c.micDiag":"🔎 Diagnóstico",
     "diag.copy":"Copiar informe","diag.copied":"✔ Copiado",
+    "pf.import":"📂 Importar copia de seguridad",
+    "imp.found":"Se han encontrado {0} sesión(es) guardadas en este dispositivo. Selecciona o crea un perfil para seguir usándolas.",
+    "imp.none":"¿Ya usabas la aplicación en este dispositivo? Los datos guardados al abrir el archivo en local NO se ven aquí: el navegador los separa por dirección. Ábrela como la usabas antes, pulsa «Exportar perfil (JSON)» y trae ese archivo con el botón de abajo.",
+    "imp.askName":"Nombre para el perfil donde guardar estas sesiones:",
   };
   const EN = {
     "app.name":"Visual Rehabilitation","nav.menu":"Menu","nav.switch":"Switch user","nav.cancel":"Cancel","lang.search":"Search language…","lang.partial":"partial",
@@ -4676,6 +4722,10 @@ button.link {
     "b2c.vshow":"Letter visible for:","b2c.vlimit":"Maximum answer time:",
     "b2c.micTest":"🎤 Check microphone","b2c.micDiag":"🔎 Diagnostics",
     "diag.copy":"Copy report","diag.copied":"✔ Copied",
+    "pf.import":"📂 Import backup",
+    "imp.found":"{0} saved session(s) were found on this device. Select or create a profile to keep using them.",
+    "imp.none":"Were you already using the app on this device? Data saved when opening the file locally is NOT visible here: the browser keeps it separate per address. Open it the way you used it before, tap «Export profile (JSON)» and bring that file with the button below.",
+    "imp.askName":"Name for the profile that will hold these sessions:",
   };
   const CA = {
     "app.name":"Rehabilitació Visual","nav.menu":"Menú","nav.switch":"Canviar d'usuari","nav.cancel":"Cancel·lar","lang.search":"Cercar idioma…","lang.partial":"parcial",
@@ -5166,7 +5216,7 @@ button.link {
     ["#profile-form .field:nth-of-type(1)>span", "pf.first"],
     ["#profile-form .field:nth-of-type(2)>span", "pf.last"],
     ["#profile-form button.primary", "pf.createBtn"],
-    ["#screen-profiles .hint-text", "pf.privacy"],
+    ["#screen-profiles .hint-text", "pf.privacy"], ["#pf-import", "pf.import"],
     ["#screen-menu h1", "menu.title"],
     ["#screen-menu .block-card:nth-of-type(1) h2", "menu.b1t"],
     ["#screen-menu .block-card:nth-of-type(1) h2 small", "menu.b1s"],
@@ -5392,6 +5442,7 @@ button.link {
     $("#menu-b2-history").addEventListener("click", () => { b2RenderHistory(); showScreen("#screen-b2-history"); });
     $("#menu-export").addEventListener("click", exportProfileJSON);
     $("#menu-import").addEventListener("click", () => $("#import-file").click());
+    $("#pf-import").addEventListener("click", () => $("#import-file").click());
     $("#btn-b1-menu").addEventListener("click", () => openMenu());
 
     // ---- Bloque 1: exportar la sesión del detalle ----
@@ -5639,9 +5690,15 @@ button.link {
         if (legacy) {
           const valid = legacy.filter((s) => s && typeof s.id === "number" && Array.isArray(s.stimuli));
           if (!valid.length) throw new Error("vacío");
-          if (!activeProfileId) { alert("Selecciona antes un perfil para importar estos datos."); return; }
           if (!confirm("El archivo contiene " + valid.length + " sesión(es) del Bloque 1 (formato " +
-            "antiguo).\n¿Importarlas al perfil activo?")) return;
+            "antiguo).\n¿Importarlas?")) return;
+          // Sin perfil activo (instalación recién estrenada) se crea uno para
+          // alojarlas, en vez de dejar al usuario sin salida.
+          if (!activeProfileId) {
+            const nom = (prompt(t("imp.askName"), "Importado") || "Importado").trim() || "Importado";
+            const partes = nom.split(" ");
+            createProfile(partes[0], partes.slice(1).join(" "));
+          }
           const cur = loadSessions();
           const ids = {}; cur.forEach((s) => { ids[s.id] = true; });
           let added = 0;
