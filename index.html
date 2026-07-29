@@ -202,6 +202,22 @@ input[type="text"] {
 }
 .b2-keypad button:active { background: var(--accent); color: #fff; }
 
+/* Estado del permiso de micrófono y guía para desbloquearlo */
+.mic-state {
+  display: flex; align-items: center; gap: 8px; font-weight: 700;
+  padding: 10px 12px; border-radius: 8px; margin: 10px 0;
+  border: 1px solid var(--border); background: #f4f2ec;
+}
+.mic-state.ok { background: #e7f4ee; border-color: var(--ok); color: var(--ok); }
+.mic-state.no { background: #fdeceb; border-color: var(--fail); color: var(--fail); }
+.mic-howto {
+  background: #fffbe9; border: 1px solid #e2d9b0; border-radius: 8px;
+  padding: 12px 14px; margin: 4px 0 10px; font-size: 0.92rem; line-height: 1.55;
+}
+.mic-howto ol { margin: 8px 0 0; padding-left: 22px; }
+.mic-howto li { margin-bottom: 6px; }
+.mic-howto b { color: var(--accent); }
+
 /* Informe de diagnóstico del micrófono */
 .mic-report {
   white-space: pre-wrap; word-break: break-word; font-size: 0.82rem;
@@ -666,7 +682,7 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v5.6</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v5.7</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
       <div id="legacy-notice" class="legacy-notice hidden"></div>
@@ -1085,8 +1101,12 @@ button.link {
               <option value="local">Mi voz entrenada (sin conexión)</option>
               <option value="web">Dictado del navegador (necesita conexión)</option>
             </select></label>
+          <div id="b2-mic-state" class="mic-state"></div>
           <div class="review-actions">
-            <button type="button" id="b2-mic-test" class="ghost">🎤 Comprobar micrófono</button>
+            <button type="button" id="b2-mic-test" class="primary">🎤 Permitir el micrófono</button>
+          </div>
+          <div id="b2-mic-howto" class="mic-howto hidden"></div>
+          <div class="review-actions">
             <button type="button" id="b2-voice-train" class="ghost">🎙 Entrenar mi voz</button>
             <button type="button" id="b2-mic-diag" class="ghost">🔎 Diagnóstico</button>
           </div>
@@ -1306,7 +1326,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "5.6";
+  const APP_VERSION = "5.7";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -3029,6 +3049,69 @@ button.link {
     return null;
   }
 
+  // Estado del permiso de micrófono: "granted", "denied", "prompt" o
+  // "unknown". Saberlo es lo que permite distinguir «aún no lo has concedido»
+  // (se puede pedir) de «lo has denegado» (el navegador ya no volverá a
+  // preguntar y hay que reactivarlo en los ajustes).
+  function micPermissionState(cb) {
+    if (!navigator.permissions || !navigator.permissions.query) { cb("unknown"); return; }
+    try {
+      navigator.permissions.query({ name: "microphone" }).then(function (st) {
+        try {
+          if (!st.__vinculado) {          // refrescar solo al cambiar de verdad
+            st.__vinculado = true;
+            st.onchange = function () { pintarEstadoMic(); };
+          }
+        } catch (e) { /* sin seguimiento de cambios */ }
+        cb(st.state);
+      }, function () { cb("unknown"); });
+    } catch (e) { cb("unknown"); }
+  }
+
+  // ¿Se está usando como aplicación instalada?
+  function esAppInstalada() {
+    try {
+      return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+             navigator.standalone === true;
+    } catch (e) { return false; }
+  }
+
+  // Pasos concretos para reactivar el permiso, según cómo se esté usando.
+  function guiaDesbloqueo() {
+    const sitio = location.host || location.protocol;
+    const pasos = esAppInstalada()
+      ? [t("mic.stepApp1"), t("mic.stepApp2", sitio), t("mic.stepApp3")]
+      : [t("mic.stepWeb1"), t("mic.stepWeb2", sitio), t("mic.stepWeb3")];
+    return "<b>" + t("mic.howtoTitle") + "</b><ol><li>" + pasos.join("</li><li>") + "</li></ol>";
+  }
+
+  function pintarEstadoMic() {
+    const caja = $("#b2-mic-state");
+    if (!caja) return;
+    micPermissionState(function (estado) {
+      const btn = $("#b2-mic-test"), guia = $("#b2-mic-howto");
+      caja.className = "mic-state";
+      if (estado === "granted") {
+        caja.textContent = t("mic.stGranted");
+        caja.classList.add("ok");
+        btn.classList.add("hidden");
+        guia.classList.add("hidden");
+      } else if (estado === "denied") {
+        caja.textContent = t("mic.stDenied");
+        caja.classList.add("no");
+        btn.classList.remove("hidden");
+        btn.textContent = t("mic.retry");
+        guia.innerHTML = guiaDesbloqueo();
+        guia.classList.remove("hidden");
+      } else {
+        caja.textContent = t("mic.stPrompt");
+        btn.classList.remove("hidden");
+        btn.textContent = t("mic.allow");
+        guia.classList.add("hidden");
+      }
+    });
+  }
+
   // Informe de por qué el micrófono puede o no usarse EN ESTE dispositivo.
   // Se pregunta al navegador en vez de suponerlo: el comportamiento de
   // file:// no es el mismo en un ordenador que en un móvil.
@@ -4649,6 +4732,17 @@ button.link {
     "b2c.micTest":"🎤 Comprobar micrófono","b2c.micDiag":"🔎 Diagnóstico",
     "diag.copy":"Copiar informe","diag.copied":"✔ Copiado",
     "pf.import":"📂 Importar copia de seguridad",
+    "mic.stGranted":"🎤 Micrófono permitido","mic.stDenied":"🚫 Micrófono bloqueado por el navegador",
+    "mic.stPrompt":"🎤 El micrófono aún no está permitido",
+    "mic.allow":"🎤 Permitir el micrófono","mic.retry":"🔄 Ya lo he desbloqueado, comprobar",
+    "mic.blocked":"El navegador ya no puede volver a preguntarte porque el permiso está denegado. Reactívalo con estos pasos y vuelve a pulsar el botón.",
+    "mic.howtoTitle":"Cómo desbloquear el micrófono",
+    "mic.stepApp1":"Mantén pulsado el icono de la aplicación en la pantalla de inicio y abre «Información de la aplicación».",
+    "mic.stepApp2":"Entra en «Permisos» → «Micrófono» y elige «Permitir». Si no aparece, ábrelo en Chrome: ⋮ → Configuración → Configuración de sitios → Micrófono → {0} → Permitir.",
+    "mic.stepApp3":"Vuelve aquí y pulsa el botón de comprobar.",
+    "mic.stepWeb1":"Pulsa el icono a la izquierda de la dirección web (el candado o los controles).",
+    "mic.stepWeb2":"Abre «Permisos» y activa el «Micrófono» para {0}.",
+    "mic.stepWeb3":"Recarga la página y vuelve a pulsar el botón.",
     "imp.found":"Se han encontrado {0} sesión(es) guardadas en este dispositivo. Selecciona o crea un perfil para seguir usándolas.",
     "imp.none":"¿Ya usabas la aplicación en este dispositivo? Los datos guardados al abrir el archivo en local NO se ven aquí: el navegador los separa por dirección. Ábrela como la usabas antes, pulsa «Exportar perfil (JSON)» y trae ese archivo con el botón de abajo.",
     "imp.askName":"Nombre para el perfil donde guardar estas sesiones:",
@@ -4723,6 +4817,17 @@ button.link {
     "b2c.micTest":"🎤 Check microphone","b2c.micDiag":"🔎 Diagnostics",
     "diag.copy":"Copy report","diag.copied":"✔ Copied",
     "pf.import":"📂 Import backup",
+    "mic.stGranted":"🎤 Microphone allowed","mic.stDenied":"🚫 Microphone blocked by the browser",
+    "mic.stPrompt":"🎤 The microphone is not allowed yet",
+    "mic.allow":"🎤 Allow the microphone","mic.retry":"🔄 I have unblocked it, check again",
+    "mic.blocked":"The browser can no longer ask you because the permission is denied. Re-enable it with these steps and press the button again.",
+    "mic.howtoTitle":"How to unblock the microphone",
+    "mic.stepApp1":"Long-press the app icon on the home screen and open «App info».",
+    "mic.stepApp2":"Go to «Permissions» → «Microphone» and choose «Allow». If it is not there, open it in Chrome: ⋮ → Settings → Site settings → Microphone → {0} → Allow.",
+    "mic.stepApp3":"Come back here and press the check button.",
+    "mic.stepWeb1":"Tap the icon to the left of the web address (the padlock or controls).",
+    "mic.stepWeb2":"Open «Permissions» and turn on the «Microphone» for {0}.",
+    "mic.stepWeb3":"Reload the page and press the button again.",
     "imp.found":"{0} saved session(s) were found on this device. Select or create a profile to keep using them.",
     "imp.none":"Were you already using the app on this device? Data saved when opening the file locally is NOT visible here: the browser keeps it separate per address. Open it the way you used it before, tap «Export profile (JSON)» and bring that file with the button below.",
     "imp.askName":"Name for the profile that will hold these sessions:",
@@ -5187,7 +5292,7 @@ button.link {
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(1)>span", "b2c.vsize"],
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(2)>span", "b2c.vshow"],
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(3)>span", "b2c.vlimit"],
-    ["#b2-mic-test", "b2c.micTest"],
+
     ["#b2-voice-train", "b2c.trainBtn"],
     ["#b2-mic-diag", "b2c.micDiag"], ["#b2-mic-copy", "diag.copy"],
     ["#screen-b2-config fieldset:nth-of-type(4) .field:nth-of-type(4)>span", "b2c.engine"],
@@ -5379,6 +5484,13 @@ button.link {
     updateDistanceReco();
 
     registrarServiceWorker();
+    // Al volver de los ajustes del sistema el permiso puede haber cambiado.
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && $("#screen-b2-config").classList.contains("active") &&
+          $("#b2-mode").value === "voice-letter") {
+        pintarEstadoMic();
+      }
+    });
 
     // Restaurar la última configuración usada (si existe).
     restoreConfig();
@@ -5483,6 +5595,7 @@ button.link {
         $("#b2-mic-warn").textContent = why ? t(why) : "";
         $("#b2-train-state").textContent = t("vt.trained", voiceTrainedCount(),
           exAlphabet().length);
+        pintarEstadoMic();
       }
     };
     $("#b2-mode").addEventListener("input", b2ModeFields);
@@ -5536,10 +5649,24 @@ button.link {
     });
     $("#b2-mic-test").addEventListener("click", () => {
       const warn = $("#b2-mic-warn");
-      warn.textContent = t("ex.micAsking");
-      requestMic(function (okMic, why) {
-        b2MicOk = okMic;
-        warn.textContent = okMic ? t("ex.micOk") : t(why || "ex.micDenied");
+      micPermissionState(function (estado) {
+        if (estado === "denied") {
+          // El navegador ya no volverá a preguntar: hay que reactivarlo a mano.
+          warn.textContent = t("mic.blocked");
+          $("#b2-mic-howto").innerHTML = guiaDesbloqueo();
+          $("#b2-mic-howto").classList.remove("hidden");
+          return;
+        }
+        warn.textContent = t("ex.micAsking");
+        requestMic(function (okMic, why) {
+          b2MicOk = okMic;
+          warn.textContent = okMic ? t("ex.micOk") : t(why || "ex.micDenied");
+          if (!okMic) {
+            $("#b2-mic-howto").innerHTML = guiaDesbloqueo();
+            $("#b2-mic-howto").classList.remove("hidden");
+          }
+          pintarEstadoMic();
+        });
       });
     });
     $("#b2-preset").addEventListener("input", () => {
