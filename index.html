@@ -386,8 +386,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 .install-box .install-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .install-box button { font-size: 0.95rem; }
-#install-help { margin: -8px 0 14px; }
-#install-help b { color: var(--ink); }
+.install-help { margin: -8px 0 14px; }
+.install-help b { color: var(--ink); }
+.install-link {
+  display: block; width: -moz-fit-content; width: fit-content;
+  margin-top: 8px; padding: 10px 14px;
+  background: var(--accent); color: #fff; border-radius: 8px;
+  text-decoration: none; font-weight: 600;
+}
+.install-diag {
+  display: block; margin-top: 8px; font-size: 0.72rem;
+  color: var(--ink-soft); opacity: 0.8; word-break: break-all;
+}
 
 /* La maqueta muestra solo el anillo elegido. El margen del borde y el hueco
    de la figura de fijación son ya del tamaño mínimo imprescindible (un radio
@@ -795,9 +805,20 @@ button.link {
   <!-- ===================== PANTALLA: SELECTOR DE PERFILES ===================== -->
   <section id="screen-profiles" class="screen active">
     <div class="panel">
-      <h1>Rehabilitación Visual <span class="ver">v6.3</span></h1>
+      <h1>Rehabilitación Visual <span class="ver">v6.4</span></h1>
       <p class="subtitle">Selecciona un perfil para empezar, o crea uno nuevo.
         Cada perfil guarda sus propias sesiones, resultados y configuraciones.</p>
+      <!-- Instalación en el dispositivo (también aquí: es lo primero que se
+           ve al abrir, y sin perfil creado no se llega al menú). -->
+      <div class="install-box hidden">
+        <span class="install-text"></span>
+        <span class="install-acts">
+          <button type="button" class="install-btn primary">📲 Instalar la aplicación</button>
+          <button type="button" class="install-how ghost">¿Cómo?</button>
+        </span>
+      </div>
+      <div class="install-help hint-text hidden"></div>
+
       <div id="legacy-notice" class="legacy-notice hidden"></div>
       <div id="restore-box" class="legacy-notice hidden"></div>
       <div class="review-actions" style="margin-bottom:14px">
@@ -827,14 +848,14 @@ button.link {
 
       <!-- Instalación en el dispositivo. El navegador solo ofrece su propio
            aviso una vez; con este botón se puede pedir siempre que se quiera. -->
-      <div id="install-box" class="install-box hidden">
-        <span id="install-text">Puedes instalarla como aplicación y usarla sin conexión.</span>
+      <div class="install-box hidden">
+        <span class="install-text"></span>
         <span class="install-acts">
-          <button type="button" id="install-btn" class="primary">📲 Instalar la aplicación</button>
-          <button type="button" id="install-how" class="ghost">¿Cómo?</button>
+          <button type="button" class="install-btn primary">📲 Instalar la aplicación</button>
+          <button type="button" class="install-how ghost">¿Cómo?</button>
         </span>
       </div>
-      <div id="install-help" class="hint-text hidden"></div>
+      <div class="install-help hint-text hidden"></div>
 
       <div id="menu-overview" class="history-summary"></div>
       <div class="block-cards">
@@ -1468,7 +1489,7 @@ button.link {
 (() => {
   "use strict";
 
-  const APP_VERSION = "6.3";
+  const APP_VERSION = "6.4";
   const SCHEMA_VERSION = 3;
   const STORAGE_KEY = "rehab_visual_sessions_v2";   // clave antigua (se conserva como copia)
   const CONFIG_KEY = "rehab_visual_config_v1";      // config antigua (fallback de migración)
@@ -3425,60 +3446,102 @@ button.link {
     return location.protocol === "https:" ||
            location.hostname === "localhost" || location.hostname === "127.0.0.1";
   }
-  function pintarInstalacion() {
-    const caja = $("#install-box");
-    if (!caja) return;
-    if (appYaInstalada()) { caja.classList.add("hidden"); $("#install-help").classList.add("hidden"); return; }
-    caja.classList.remove("hidden");
-    // El botón se deja siempre: si el navegador no ha dado el evento, al
-    // pulsarlo se explica la ruta manual, que es lo que hace falta saber.
-    $("#install-text").textContent = window.__bip ? t("inst.ready") : t("inst.manual");
+  // Dirección publicada del proyecto. Desde un archivo abierto en local no hay
+  // forma de instalar (el navegador no lee el manifiesto ni registra el service
+  // worker con file://), así que el aviso ofrece este enlace para abrirla en
+  // línea una vez e instalarla desde ahí; después ya funciona sin conexión.
+  const DIRECCION_WEB =
+    "https://s7even456-cloud.github.io/Planificaci-n-App-Rehabilitacion-Visual-1-V1/";
+
+  const cajasInstalacion = () => document.querySelectorAll(".install-box");
+  const ayudasInstalacion = () => document.querySelectorAll(".install-help");
+
+  function mostrarAyudaInstalacion(mostrar) {
+    const html = textoGuiaInstalacion();
+    ayudasInstalacion().forEach(function (el) {
+      el.innerHTML = html;
+      el.classList.toggle("hidden", !mostrar);
+    });
   }
-  // Guía manual, según el navegador y cómo se haya abierto la página.
+
+  function pintarInstalacion() {
+    const cajas = cajasInstalacion();
+    if (!cajas.length) return;
+    const instalada = appYaInstalada();
+    const texto = window.__bip ? t("inst.ready") : t("inst.manual");
+    cajas.forEach(function (c) {
+      c.classList.toggle("hidden", instalada);
+      const tx = c.querySelector(".install-text");
+      if (tx) tx.textContent = texto;
+    });
+    if (instalada) ayudasInstalacion().forEach(function (e) { e.classList.add("hidden"); });
+  }
+
+  // Guía manual, según el navegador y cómo se haya abierto la página. Cuando la
+  // instalación es imposible se da el enlace, no solo la explicación.
   function textoGuiaInstalacion() {
     const ua = navigator.userAgent || "";
     const esIOS = /iPad|iPhone|iPod/.test(ua) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (!sitioInstalable()) return t("inst.needHttps");
-    if (esIOS) return t("inst.ios");
-    return t("inst.android");
+    let html;
+    if (!sitioInstalable()) {
+      html = t("inst.needHttps") +
+        '<a class="install-link" href="' + DIRECCION_WEB + '" target="_blank" rel="noopener">' +
+        t("inst.openOnline") + "</a>";
+    } else {
+      html = esIOS ? t("inst.ios") : t("inst.android");
+    }
+    return html + '<span class="install-diag">' + diagnosticoInstalacion() + "</span>";
   }
+
+  // Por qué el navegador puede no estar ofreciendo la instalación. Sin esto,
+  // cuando falla no hay forma de saber qué falta.
+  function diagnosticoInstalacion() {
+    const si = (b) => (b ? "✓" : "✗");          // sin texto: vale en cualquier idioma
+    const partes = [
+      t("inst.dOrigin") + ": " + (location.origin && location.origin !== "null"
+        ? location.origin : location.protocol),
+      t("inst.dSecure") + ": " + si(window.isSecureContext),
+      "service worker: " + si(!!navigator.serviceWorker),
+      t("inst.dEvent") + ": " + si(!!window.__bip),
+      t("inst.dInstalled") + ": " + si(appYaInstalada()),
+    ];
+    return partes.join(" · ");
+  }
+
+  function lanzarInstalacion() {
+    const ev = window.__bip;
+    if (!ev) { mostrarAyudaInstalacion(true); return; }
+    window.__bip = null;                        // el evento solo sirve una vez
+    try {
+      ev.prompt();
+      if (ev.userChoice && ev.userChoice.then) {
+        ev.userChoice.then(function (r) {
+          // Rechazada: el navegador no volverá a ofrecerla por su cuenta, así
+          // que se deja a mano la ruta manual.
+          if (!r || r.outcome !== "accepted") mostrarAyudaInstalacion(true);
+          pintarInstalacion();
+        });
+      }
+    } catch (e) { mostrarAyudaInstalacion(true); }
+  }
+
   function bindInstalacion() {
-    const caja = $("#install-box");
-    if (!caja) return;
+    if (!cajasInstalacion().length) return;
     window.__onBip = pintarInstalacion;          // por si llega más tarde
     window.addEventListener("appinstalled", function () {
       window.__bip = null;
-      $("#install-help").classList.add("hidden");
+      ayudasInstalacion().forEach(function (e) { e.classList.add("hidden"); });
       pintarInstalacion();
     });
-    $("#install-btn").addEventListener("click", function () {
-      const ev = window.__bip;
-      if (!ev) { $("#install-help").innerHTML = textoGuiaInstalacion(); $("#install-help").classList.remove("hidden"); return; }
-      window.__bip = null;                        // el evento solo sirve una vez
-      try {
-        ev.prompt();
-        if (ev.userChoice && ev.userChoice.then) {
-          ev.userChoice.then(function (r) {
-            if (!r || r.outcome !== "accepted") {
-              // Rechazada: el navegador no volverá a ofrecerla, así que se
-              // deja a mano la ruta manual.
-              $("#install-help").innerHTML = textoGuiaInstalacion();
-              $("#install-help").classList.remove("hidden");
-            }
-            pintarInstalacion();
-          });
-        }
-      } catch (e) {
-        $("#install-help").innerHTML = textoGuiaInstalacion();
-        $("#install-help").classList.remove("hidden");
-      }
+    document.querySelectorAll(".install-btn").forEach(function (b) {
+      b.addEventListener("click", lanzarInstalacion);
     });
-    $("#install-how").addEventListener("click", function () {
-      const ayuda = $("#install-help");
-      const oculta = ayuda.classList.contains("hidden");
-      ayuda.innerHTML = textoGuiaInstalacion();
-      ayuda.classList.toggle("hidden", !oculta);
+    document.querySelectorAll(".install-how").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const abierta = !$(".install-help").classList.contains("hidden");
+        mostrarAyudaInstalacion(!abierta);
+      });
     });
     pintarInstalacion();
   }
@@ -5162,7 +5225,7 @@ button.link {
     "ex.bandB1":"No la veo · doble toque","ex.bandFind":"No la veo · siguiente · doble toque","ex.bandWord":"Saltar palabra · doble toque",
     "ex.speakLetter":"Letra","ex.wordProg":"Palabra: {0} de {1} letras","ex.confirmExit":"¿Finalizar el ejercicio? Se perderá la sesión actual.",
     "ex.confirmFinish":"¿Finalizar la sesión? Se conservarán los intentos ya realizados.","ex.wordRestarted":"Palabra reiniciada",
-    "inst.ready":"Puedes instalarla como aplicación y usarla sin conexión.","inst.manual":"Instálala como aplicación desde el menú del navegador para usarla sin conexión.","inst.btn":"📲 Instalar la aplicación","inst.how":"¿Cómo?","inst.android":"En Chrome, toca el menú <b>⋮</b> (arriba a la derecha) y elige <b>«Instalar aplicación»</b> o <b>«Añadir a la pantalla de inicio»</b>. Si no aparece la opción, recarga la página y vuelve a mirar.","inst.ios":"En Safari, toca el botón <b>Compartir</b> y elige <b>«Añadir a pantalla de inicio»</b>.","inst.needHttps":"Con el archivo abierto en local no se puede instalar. Ábrela desde su dirección <b>https://</b> y vuelve a intentarlo.","r.areaLegend":"Área configurada","r.titleB1":"Resultado de la sesión","r.titleB2":"Resultado de la sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de errores",
+    "inst.openOnline":"Abrirla en línea ahora","inst.dOrigin":"dirección","inst.dSecure":"contexto seguro","inst.dEvent":"el navegador la ofrece","inst.dInstalled":"ya instalada","inst.ready":"Puedes instalarla como aplicación y usarla sin conexión.","inst.manual":"Instálala como aplicación desde el menú del navegador para usarla sin conexión.","inst.btn":"📲 Instalar la aplicación","inst.how":"¿Cómo?","inst.android":"En Chrome, toca el menú <b>⋮</b> (arriba a la derecha) y elige <b>«Instalar aplicación»</b> o <b>«Añadir a la pantalla de inicio»</b>. Si no aparece la opción, recarga la página y vuelve a mirar.","inst.ios":"En Safari, toca el botón <b>Compartir</b> y elige <b>«Añadir a pantalla de inicio»</b>.","inst.needHttps":"Con el archivo abierto en local no se puede instalar. Ábrela desde su dirección <b>https://</b> y vuelve a intentarlo.","r.areaLegend":"Área configurada","r.titleB1":"Resultado de la sesión","r.titleB2":"Resultado de la sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de errores",
     "r.this":"Esta sesión","r.acc":"Acumulado","r.save":"Guardar resultados","r.discard":"Descartar",
     "r.confirmDiscard":"¿Descartar esta sesión sin guardarla?",
     "st.prec":"Precisión","st.precFirst":"Precisión (1.ᵉʳ intento)","st.precLetters":"Precisión de letras","st.hits":"Aciertos",
@@ -5256,7 +5319,7 @@ button.link {
     "ex.bandB1":"I can't see it · double tap","ex.bandFind":"I can't see it · next · double tap","ex.bandWord":"Skip word · double tap",
     "ex.speakLetter":"Letter","ex.wordProg":"Word: {0} of {1} letters","ex.confirmExit":"Finish the exercise? The current session will be lost.",
     "ex.confirmFinish":"Finish the session? Completed attempts will be kept.","ex.wordRestarted":"Word restarted",
-    "inst.ready":"You can install it as an app and use it offline.","inst.manual":"Install it as an app from the browser menu to use it offline.","inst.btn":"📲 Install the app","inst.how":"How?","inst.android":"In Chrome, tap the <b>⋮</b> menu (top right) and choose <b>“Install app”</b> or <b>“Add to Home screen”</b>. If the option is missing, reload the page and look again.","inst.ios":"In Safari, tap the <b>Share</b> button and choose <b>“Add to Home Screen”</b>.","inst.needHttps":"It cannot be installed from a local file. Open it from its <b>https://</b> address and try again.","r.areaLegend":"Configured area","r.titleB1":"Session results","r.titleB2":"Session results — Block 2","r.faultMap":"Error map","r.errMap":"Error map",
+    "inst.openOnline":"Open it online now","inst.dOrigin":"address","inst.dSecure":"secure context","inst.dEvent":"browser offers it","inst.dInstalled":"already installed","inst.ready":"You can install it as an app and use it offline.","inst.manual":"Install it as an app from the browser menu to use it offline.","inst.btn":"📲 Install the app","inst.how":"How?","inst.android":"In Chrome, tap the <b>⋮</b> menu (top right) and choose <b>“Install app”</b> or <b>“Add to Home screen”</b>. If the option is missing, reload the page and look again.","inst.ios":"In Safari, tap the <b>Share</b> button and choose <b>“Add to Home Screen”</b>.","inst.needHttps":"It cannot be installed from a local file. Open it from its <b>https://</b> address and try again.","r.areaLegend":"Configured area","r.titleB1":"Session results","r.titleB2":"Session results — Block 2","r.faultMap":"Error map","r.errMap":"Error map",
     "r.this":"This session","r.acc":"Accumulated","r.save":"Save results","r.discard":"Discard",
     "r.confirmDiscard":"Discard this session without saving?",
     "st.prec":"Accuracy","st.precFirst":"Accuracy (1st try)","st.precLetters":"Letter accuracy","st.hits":"Hits",
@@ -5350,7 +5413,7 @@ button.link {
     "ex.bandB1":"No la veig · doble toc","ex.bandFind":"No la veig · següent · doble toc","ex.bandWord":"Saltar paraula · doble toc",
     "ex.speakLetter":"Lletra","ex.wordProg":"Paraula: {0} de {1} lletres","ex.confirmExit":"Finalitzar l'exercici? Es perdrà la sessió actual.",
     "ex.confirmFinish":"Finalitzar la sessió? Es conservaran els intents realitzats.","ex.wordRestarted":"Paraula reiniciada",
-    "inst.ready":"Pots instal·lar-la com a aplicació i fer-la servir sense connexió.","inst.manual":"Instal·la-la com a aplicació des del menú del navegador per usar-la sense connexió.","inst.btn":"📲 Instal·lar l'aplicació","inst.how":"Com?","inst.android":"A Chrome, toca el menú <b>⋮</b> (a dalt a la dreta) i tria <b>«Instal·lar aplicació»</b> o <b>«Afegir a la pantalla d'inici»</b>. Si no hi és, torna a carregar la pàgina i mira-ho de nou.","inst.ios":"A Safari, toca el botó <b>Compartir</b> i tria <b>«Afegir a la pantalla d'inici»</b>.","inst.needHttps":"Amb el fitxer obert en local no es pot instal·lar. Obre-la des de la seva adreça <b>https://</b> i torna-ho a provar.","r.areaLegend":"Àrea configurada","r.titleB1":"Resultat de la sessió","r.titleB2":"Resultat de la sessió — Bloc 2","r.faultMap":"Mapa d'errors","r.errMap":"Mapa d'errors",
+    "inst.openOnline":"Obrir-la en línia ara","inst.dOrigin":"adreça","inst.dSecure":"context segur","inst.dEvent":"el navegador l'ofereix","inst.dInstalled":"ja instal·lada","inst.ready":"Pots instal·lar-la com a aplicació i fer-la servir sense connexió.","inst.manual":"Instal·la-la com a aplicació des del menú del navegador per usar-la sense connexió.","inst.btn":"📲 Instal·lar l'aplicació","inst.how":"Com?","inst.android":"A Chrome, toca el menú <b>⋮</b> (a dalt a la dreta) i tria <b>«Instal·lar aplicació»</b> o <b>«Afegir a la pantalla d'inici»</b>. Si no hi és, torna a carregar la pàgina i mira-ho de nou.","inst.ios":"A Safari, toca el botó <b>Compartir</b> i tria <b>«Afegir a la pantalla d'inici»</b>.","inst.needHttps":"Amb el fitxer obert en local no es pot instal·lar. Obre-la des de la seva adreça <b>https://</b> i torna-ho a provar.","r.areaLegend":"Àrea configurada","r.titleB1":"Resultat de la sessió","r.titleB2":"Resultat de la sessió — Bloc 2","r.faultMap":"Mapa d'errors","r.errMap":"Mapa d'errors",
     "r.this":"Aquesta sessió","r.acc":"Acumulat","r.save":"Desar resultats","r.discard":"Descartar",
     "r.confirmDiscard":"Descartar aquesta sessió sense desar-la?",
     "st.prec":"Precisió","st.precFirst":"Precisió (1r intent)","st.precLetters":"Precisió de lletres","st.hits":"Encerts",
@@ -5397,7 +5460,7 @@ button.link {
     "ex.bandB1":"Non a vexo · dobre toque","ex.bandFind":"Non a vexo · seguinte · dobre toque","ex.bandWord":"Saltar palabra · dobre toque",
     "ex.wordProg":"Palabra: {0} de {1} letras","ex.confirmExit":"Finalizar o exercicio? Perderase a sesión actual.",
     "ex.confirmFinish":"Finalizar a sesión? Conservaranse os intentos realizados.","ex.wordRestarted":"Palabra reiniciada",
-    "inst.ready":"Podes instalala como aplicación e usala sen conexión.","inst.manual":"Instálaa como aplicación desde o menú do navegador para usala sen conexión.","inst.btn":"📲 Instalar a aplicación","inst.how":"Como?","inst.android":"En Chrome, toca o menú <b>⋮</b> (arriba á dereita) e escolle <b>«Instalar aplicación»</b> ou <b>«Engadir á pantalla de inicio»</b>. Se non aparece, recarga a páxina e mira de novo.","inst.ios":"En Safari, toca o botón <b>Compartir</b> e escolle <b>«Engadir á pantalla de inicio»</b>.","inst.needHttps":"Co ficheiro aberto en local non se pode instalar. Ábrea desde o seu enderezo <b>https://</b> e téntao outra vez.","r.areaLegend":"Área configurada","r.titleB1":"Resultado da sesión","r.titleB2":"Resultado da sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de erros",
+    "inst.openOnline":"Abrila en liña agora","inst.dOrigin":"enderezo","inst.dSecure":"contexto seguro","inst.dEvent":"o navegador ofrécea","inst.dInstalled":"xa instalada","inst.ready":"Podes instalala como aplicación e usala sen conexión.","inst.manual":"Instálaa como aplicación desde o menú do navegador para usala sen conexión.","inst.btn":"📲 Instalar a aplicación","inst.how":"Como?","inst.android":"En Chrome, toca o menú <b>⋮</b> (arriba á dereita) e escolle <b>«Instalar aplicación»</b> ou <b>«Engadir á pantalla de inicio»</b>. Se non aparece, recarga a páxina e mira de novo.","inst.ios":"En Safari, toca o botón <b>Compartir</b> e escolle <b>«Engadir á pantalla de inicio»</b>.","inst.needHttps":"Co ficheiro aberto en local non se pode instalar. Ábrea desde o seu enderezo <b>https://</b> e téntao outra vez.","r.areaLegend":"Área configurada","r.titleB1":"Resultado da sesión","r.titleB2":"Resultado da sesión — Bloque 2","r.faultMap":"Mapa de fallos","r.errMap":"Mapa de erros",
     "r.this":"Esta sesión","r.acc":"Acumulado","r.save":"Gardar resultados","r.confirmDiscard":"Descartar esta sesión sen gardala?",
     "st.hits":"Acertos","st.firstTry":"Acertos á primeira","st.wordsDone":"Palabras completadas","st.notSeen":"Non vistos","st.omissions":"Omisións",
     "st.errors":"Erros","st.meanErr":"Erro medio (raios)","st.meanTime":"Tempo medio","st.meanWord":"Tempo medio/palabra","st.meanLetter":"Tempo medio/letra",
@@ -5436,7 +5499,7 @@ button.link {
     "ex.bandB1":"Ez dut ikusten · ukitu bikoitza","ex.bandFind":"Ez dut ikusten · hurrengoa · ukitu bikoitza","ex.bandWord":"Hitza saltatu · ukitu bikoitza",
     "ex.speakLetter":"Letra","ex.wordProg":"Hitza: {0} / {1} letra","ex.confirmExit":"Ariketa amaitu? Uneko saioa galduko da.",
     "ex.confirmFinish":"Saioa amaitu? Egindako saiakerak gordeko dira.","ex.wordRestarted":"Hitza berrabiarazita",
-    "inst.ready":"Aplikazio gisa instala dezakezu eta konexiorik gabe erabili.","inst.manual":"Instalatu aplikazio gisa nabigatzailearen menutik, konexiorik gabe erabiltzeko.","inst.btn":"📲 Aplikazioa instalatu","inst.how":"Nola?","inst.android":"Chromen, ukitu <b>⋮</b> menua (goian eskuinean) eta aukeratu <b>«Instalatu aplikazioa»</b> edo <b>«Gehitu hasierako pantailan»</b>. Agertzen ez bada, birkargatu orria eta begiratu berriro.","inst.ios":"Safarin, ukitu <b>Partekatu</b> botoia eta aukeratu <b>«Gehitu hasierako pantailan»</b>.","inst.needHttps":"Fitxategia bertan irekita ezin da instalatu. Ireki bere <b>https://</b> helbidetik eta saiatu berriro.","r.areaLegend":"Konfiguratutako eremua","r.titleB1":"Saioaren emaitza","r.titleB2":"Saioaren emaitza — 2. blokea","r.faultMap":"Akatsen mapa","r.errMap":"Erroreen mapa",
+    "inst.openOnline":"Ireki sarean orain","inst.dOrigin":"helbidea","inst.dSecure":"testuinguru segurua","inst.dEvent":"nabigatzaileak eskaintzen du","inst.dInstalled":"instalatuta dago","inst.ready":"Aplikazio gisa instala dezakezu eta konexiorik gabe erabili.","inst.manual":"Instalatu aplikazio gisa nabigatzailearen menutik, konexiorik gabe erabiltzeko.","inst.btn":"📲 Aplikazioa instalatu","inst.how":"Nola?","inst.android":"Chromen, ukitu <b>⋮</b> menua (goian eskuinean) eta aukeratu <b>«Instalatu aplikazioa»</b> edo <b>«Gehitu hasierako pantailan»</b>. Agertzen ez bada, birkargatu orria eta begiratu berriro.","inst.ios":"Safarin, ukitu <b>Partekatu</b> botoia eta aukeratu <b>«Gehitu hasierako pantailan»</b>.","inst.needHttps":"Fitxategia bertan irekita ezin da instalatu. Ireki bere <b>https://</b> helbidetik eta saiatu berriro.","r.areaLegend":"Konfiguratutako eremua","r.titleB1":"Saioaren emaitza","r.titleB2":"Saioaren emaitza — 2. blokea","r.faultMap":"Akatsen mapa","r.errMap":"Erroreen mapa",
     "r.this":"Saio hau","r.acc":"Metatua","r.save":"Emaitzak gorde","r.discard":"Baztertu","r.confirmDiscard":"Saio hau gorde gabe baztertu?",
     "st.prec":"Zehaztasuna","st.hits":"Asmatuak","st.notSeen":"Ikusi gabeak","st.omissions":"Omisioak","st.errors":"Erroreak",
     "st.meanTime":"Batez besteko denbora","st.duration":"Iraupena","st.hemiOf":"asmatze","st.fieldLR":"Ezker / eskuin eremua","st.fieldTB":"Goiko / beheko eremua",
@@ -5469,7 +5532,7 @@ button.link {
     "ex.bandB1":"Não a vejo · duplo toque","ex.bandFind":"Não a vejo · seguinte · duplo toque","ex.bandWord":"Saltar palavra · duplo toque",
     "ex.speakLetter":"Letra","ex.wordProg":"Palavra: {0} de {1} letras","ex.confirmExit":"Terminar o exercício? A sessão atual será perdida.",
     "ex.confirmFinish":"Terminar a sessão? As tentativas realizadas serão guardadas.","ex.wordRestarted":"Palavra reiniciada",
-    "inst.ready":"Podes instalá-la como aplicação e usá-la sem ligação.","inst.manual":"Instala-a como aplicação a partir do menu do navegador para a usar sem ligação.","inst.btn":"📲 Instalar a aplicação","inst.how":"Como?","inst.android":"No Chrome, toca no menu <b>⋮</b> (canto superior direito) e escolhe <b>«Instalar aplicação»</b> ou <b>«Adicionar ao ecrã principal»</b>. Se não aparecer, recarrega a página e volta a ver.","inst.ios":"No Safari, toca no botão <b>Partilhar</b> e escolhe <b>«Adicionar ao ecrã principal»</b>.","inst.needHttps":"Com o ficheiro aberto localmente não é possível instalar. Abre-a a partir do endereço <b>https://</b> e tenta de novo.","r.areaLegend":"Área configurada","r.titleB1":"Resultado da sessão","r.titleB2":"Resultado da sessão — Bloco 2","r.faultMap":"Mapa de falhas","r.errMap":"Mapa de erros",
+    "inst.openOnline":"Abri-la online agora","inst.dOrigin":"endereço","inst.dSecure":"contexto seguro","inst.dEvent":"o navegador oferece-a","inst.dInstalled":"já instalada","inst.ready":"Podes instalá-la como aplicação e usá-la sem ligação.","inst.manual":"Instala-a como aplicação a partir do menu do navegador para a usar sem ligação.","inst.btn":"📲 Instalar a aplicação","inst.how":"Como?","inst.android":"No Chrome, toca no menu <b>⋮</b> (canto superior direito) e escolhe <b>«Instalar aplicação»</b> ou <b>«Adicionar ao ecrã principal»</b>. Se não aparecer, recarrega a página e volta a ver.","inst.ios":"No Safari, toca no botão <b>Partilhar</b> e escolhe <b>«Adicionar ao ecrã principal»</b>.","inst.needHttps":"Com o ficheiro aberto localmente não é possível instalar. Abre-a a partir do endereço <b>https://</b> e tenta de novo.","r.areaLegend":"Área configurada","r.titleB1":"Resultado da sessão","r.titleB2":"Resultado da sessão — Bloco 2","r.faultMap":"Mapa de falhas","r.errMap":"Mapa de erros",
     "r.this":"Esta sessão","r.acc":"Acumulado","r.save":"Guardar resultados","r.discard":"Descartar","r.confirmDiscard":"Descartar esta sessão sem guardar?",
     "st.prec":"Precisão","st.hits":"Acertos","st.firstTry":"Acertos à primeira","st.wordsDone":"Palavras completadas","st.notSeen":"Não vistos",
     "st.omissions":"Omissões","st.incomplete":"Incompletas","st.errors":"Erros","st.meanErr":"Erro médio (raios)","st.meanTime":"Tempo médio",
@@ -5509,7 +5572,7 @@ button.link {
     "ex.bandB1":"Non la vedo · doppio tocco","ex.bandFind":"Non la vedo · successiva · doppio tocco","ex.bandWord":"Salta parola · doppio tocco",
     "ex.speakLetter":"Lettera","ex.wordProg":"Parola: {0} di {1} lettere","ex.confirmExit":"Terminare l'esercizio? La sessione attuale andrà persa.",
     "ex.confirmFinish":"Terminare la sessione? I tentativi effettuati saranno conservati.","ex.wordRestarted":"Parola ricominciata",
-    "inst.ready":"Puoi installarla come app e usarla senza connessione.","inst.manual":"Installala come app dal menu del browser per usarla senza connessione.","inst.btn":"📲 Installa l'app","inst.how":"Come?","inst.android":"In Chrome, tocca il menu <b>⋮</b> (in alto a destra) e scegli <b>«Installa app»</b> o <b>«Aggiungi a schermata Home»</b>. Se non compare, ricarica la pagina e riprova a guardare.","inst.ios":"In Safari, tocca il pulsante <b>Condividi</b> e scegli <b>«Aggiungi a Home»</b>.","inst.needHttps":"Con il file aperto in locale non si può installare. Aprila dal suo indirizzo <b>https://</b> e riprova.","r.areaLegend":"Area configurata","r.titleB1":"Risultato della sessione","r.titleB2":"Risultato della sessione — Blocco 2","r.faultMap":"Mappa degli errori","r.errMap":"Mappa degli errori",
+    "inst.openOnline":"Aprirla online ora","inst.dOrigin":"indirizzo","inst.dSecure":"contesto sicuro","inst.dEvent":"il browser la offre","inst.dInstalled":"già installata","inst.ready":"Puoi installarla come app e usarla senza connessione.","inst.manual":"Installala come app dal menu del browser per usarla senza connessione.","inst.btn":"📲 Installa l'app","inst.how":"Come?","inst.android":"In Chrome, tocca il menu <b>⋮</b> (in alto a destra) e scegli <b>«Installa app»</b> o <b>«Aggiungi a schermata Home»</b>. Se non compare, ricarica la pagina e riprova a guardare.","inst.ios":"In Safari, tocca il pulsante <b>Condividi</b> e scegli <b>«Aggiungi a Home»</b>.","inst.needHttps":"Con il file aperto in locale non si può installare. Aprila dal suo indirizzo <b>https://</b> e riprova.","r.areaLegend":"Area configurata","r.titleB1":"Risultato della sessione","r.titleB2":"Risultato della sessione — Blocco 2","r.faultMap":"Mappa degli errori","r.errMap":"Mappa degli errori",
     "r.this":"Questa sessione","r.acc":"Accumulato","r.save":"Salva risultati","r.discard":"Scarta","r.confirmDiscard":"Scartare questa sessione senza salvarla?",
     "st.prec":"Precisione","st.hits":"Corretti","st.notSeen":"Non visti","st.omissions":"Omissioni","st.errors":"Errori",
     "st.meanTime":"Tempo medio","st.duration":"Durata","st.hemiOf":"successi","st.fieldLR":"Campo sin / des","st.fieldTB":"Campo sup / inf","st.bias":"Bias dell'errore",
@@ -5544,7 +5607,7 @@ button.link {
     "ex.bandB1":"Je ne la vois pas · double touche","ex.bandFind":"Je ne la vois pas · suivante · double touche","ex.bandWord":"Passer le mot · double touche",
     "ex.speakLetter":"Lettre","ex.wordProg":"Mot : {0} sur {1} lettres","ex.confirmExit":"Terminer l'exercice ? La session actuelle sera perdue.",
     "ex.confirmFinish":"Terminer la session ? Les essais réalisés seront conservés.","ex.wordRestarted":"Mot recommencé",
-    "inst.ready":"Tu peux l’installer comme application et l’utiliser hors connexion.","inst.manual":"Installe-la comme application depuis le menu du navigateur pour l’utiliser hors connexion.","inst.btn":"📲 Installer l’application","inst.how":"Comment ?","inst.android":"Dans Chrome, touche le menu <b>⋮</b> (en haut à droite) et choisis <b>« Installer l’application »</b> ou <b>« Ajouter à l’écran d’accueil »</b>. Si l’option manque, recharge la page et regarde à nouveau.","inst.ios":"Dans Safari, touche le bouton <b>Partager</b> et choisis <b>« Sur l’écran d’accueil »</b>.","inst.needHttps":"Impossible d’installer depuis un fichier local. Ouvre-la à son adresse <b>https://</b> et réessaie.","r.areaLegend":"Zone configurée","r.titleB1":"Résultat de la session","r.titleB2":"Résultat de la session — Bloc 2","r.faultMap":"Carte des erreurs","r.errMap":"Carte des erreurs",
+    "inst.openOnline":"L’ouvrir en ligne maintenant","inst.dOrigin":"adresse","inst.dSecure":"contexte sécurisé","inst.dEvent":"le navigateur la propose","inst.dInstalled":"déjà installée","inst.ready":"Tu peux l’installer comme application et l’utiliser hors connexion.","inst.manual":"Installe-la comme application depuis le menu du navigateur pour l’utiliser hors connexion.","inst.btn":"📲 Installer l’application","inst.how":"Comment ?","inst.android":"Dans Chrome, touche le menu <b>⋮</b> (en haut à droite) et choisis <b>« Installer l’application »</b> ou <b>« Ajouter à l’écran d’accueil »</b>. Si l’option manque, recharge la page et regarde à nouveau.","inst.ios":"Dans Safari, touche le bouton <b>Partager</b> et choisis <b>« Sur l’écran d’accueil »</b>.","inst.needHttps":"Impossible d’installer depuis un fichier local. Ouvre-la à son adresse <b>https://</b> et réessaie.","r.areaLegend":"Zone configurée","r.titleB1":"Résultat de la session","r.titleB2":"Résultat de la session — Bloc 2","r.faultMap":"Carte des erreurs","r.errMap":"Carte des erreurs",
     "r.this":"Cette session","r.acc":"Cumulé","r.save":"Enregistrer les résultats","r.discard":"Abandonner","r.confirmDiscard":"Abandonner cette session sans l'enregistrer ?",
     "st.prec":"Précision","st.hits":"Réussites","st.notSeen":"Non vus","st.omissions":"Omissions","st.errors":"Erreurs",
     "st.meanTime":"Temps moyen","st.duration":"Durée","st.hemiOf":"réussites","st.fieldLR":"Champ gauche / droit","st.fieldTB":"Champ sup / inf","st.bias":"Biais de l'erreur",
@@ -5579,7 +5642,7 @@ button.link {
     "ex.bandB1":"Ich sehe es nicht · Doppeltipp","ex.bandFind":"Ich sehe ihn nicht · weiter · Doppeltipp","ex.bandWord":"Wort überspringen · Doppeltipp",
     "ex.speakLetter":"Buchstabe","ex.wordProg":"Wort: {0} von {1} Buchstaben","ex.confirmExit":"Übung beenden? Die aktuelle Sitzung geht verloren.",
     "ex.confirmFinish":"Sitzung beenden? Die durchgeführten Versuche bleiben erhalten.","ex.wordRestarted":"Wort neu begonnen",
-    "inst.ready":"Du kannst sie als App installieren und offline nutzen.","inst.manual":"Installiere sie über das Browsermenü als App, um sie offline zu nutzen.","inst.btn":"📲 App installieren","inst.how":"Wie?","inst.android":"Tippe in Chrome auf das Menü <b>⋮</b> (oben rechts) und wähle <b>„App installieren“</b> oder <b>„Zum Startbildschirm hinzufügen“</b>. Fehlt die Option, lade die Seite neu und schau erneut.","inst.ios":"Tippe in Safari auf <b>Teilen</b> und wähle <b>„Zum Home-Bildschirm“</b>.","inst.needHttps":"Aus einer lokalen Datei ist keine Installation möglich. Öffne sie über ihre <b>https://</b>-Adresse und versuche es erneut.","r.areaLegend":"Eingestellter Bereich","r.titleB1":"Sitzungsergebnis","r.titleB2":"Sitzungsergebnis — Block 2","r.faultMap":"Fehlerkarte","r.errMap":"Fehlerkarte",
+    "inst.openOnline":"Jetzt online öffnen","inst.dOrigin":"Adresse","inst.dSecure":"sicherer Kontext","inst.dEvent":"Browser bietet sie an","inst.dInstalled":"bereits installiert","inst.ready":"Du kannst sie als App installieren und offline nutzen.","inst.manual":"Installiere sie über das Browsermenü als App, um sie offline zu nutzen.","inst.btn":"📲 App installieren","inst.how":"Wie?","inst.android":"Tippe in Chrome auf das Menü <b>⋮</b> (oben rechts) und wähle <b>„App installieren“</b> oder <b>„Zum Startbildschirm hinzufügen“</b>. Fehlt die Option, lade die Seite neu und schau erneut.","inst.ios":"Tippe in Safari auf <b>Teilen</b> und wähle <b>„Zum Home-Bildschirm“</b>.","inst.needHttps":"Aus einer lokalen Datei ist keine Installation möglich. Öffne sie über ihre <b>https://</b>-Adresse und versuche es erneut.","r.areaLegend":"Eingestellter Bereich","r.titleB1":"Sitzungsergebnis","r.titleB2":"Sitzungsergebnis — Block 2","r.faultMap":"Fehlerkarte","r.errMap":"Fehlerkarte",
     "r.this":"Diese Sitzung","r.acc":"Kumuliert","r.save":"Ergebnisse speichern","r.discard":"Verwerfen","r.confirmDiscard":"Diese Sitzung ohne Speichern verwerfen?",
     "st.prec":"Genauigkeit","st.hits":"Treffer","st.notSeen":"Nicht gesehen","st.omissions":"Auslassungen","st.errors":"Fehler",
     "st.meanTime":"Mittlere Zeit","st.duration":"Dauer","st.hemiOf":"Treffer","st.fieldLR":"Linkes / rechtes Feld","st.fieldTB":"Oberes / unteres Feld","st.bias":"Fehlertendenz",
@@ -5614,7 +5677,7 @@ button.link {
     "ex.bandB1":"Не вижу · двойное касание","ex.bandFind":"Не вижу · следующая · двойное касание","ex.bandWord":"Пропустить слово · двойное касание",
     "ex.speakLetter":"Буква","ex.wordProg":"Слово: {0} из {1} букв","ex.confirmExit":"Завершить упражнение? Текущий сеанс будет потерян.",
     "ex.confirmFinish":"Завершить сеанс? Выполненные попытки будут сохранены.","ex.wordRestarted":"Слово начато заново",
-    "inst.ready":"Можно установить как приложение и работать без сети.","inst.manual":"Установите как приложение через меню браузера, чтобы работать без сети.","inst.btn":"📲 Установить приложение","inst.how":"Как?","inst.android":"В Chrome нажмите меню <b>⋮</b> (справа вверху) и выберите <b>«Установить приложение»</b> или <b>«Добавить на главный экран»</b>. Если пункта нет, перезагрузите страницу и посмотрите снова.","inst.ios":"В Safari нажмите <b>Поделиться</b> и выберите <b>«На экран «Домой»»</b>.","inst.needHttps":"Из локального файла установка невозможна. Откройте по адресу <b>https://</b> и попробуйте снова.","r.areaLegend":"Заданная зона","r.titleB1":"Результат сеанса","r.titleB2":"Результат сеанса — блок 2","r.faultMap":"Карта ошибок","r.errMap":"Карта ошибок",
+    "inst.openOnline":"Открыть онлайн сейчас","inst.dOrigin":"адрес","inst.dSecure":"защищённый контекст","inst.dEvent":"браузер предлагает","inst.dInstalled":"уже установлено","inst.ready":"Можно установить как приложение и работать без сети.","inst.manual":"Установите как приложение через меню браузера, чтобы работать без сети.","inst.btn":"📲 Установить приложение","inst.how":"Как?","inst.android":"В Chrome нажмите меню <b>⋮</b> (справа вверху) и выберите <b>«Установить приложение»</b> или <b>«Добавить на главный экран»</b>. Если пункта нет, перезагрузите страницу и посмотрите снова.","inst.ios":"В Safari нажмите <b>Поделиться</b> и выберите <b>«На экран «Домой»»</b>.","inst.needHttps":"Из локального файла установка невозможна. Откройте по адресу <b>https://</b> и попробуйте снова.","r.areaLegend":"Заданная зона","r.titleB1":"Результат сеанса","r.titleB2":"Результат сеанса — блок 2","r.faultMap":"Карта ошибок","r.errMap":"Карта ошибок",
     "r.this":"Этот сеанс","r.acc":"Суммарно","r.save":"Сохранить результаты","r.discard":"Отменить","r.confirmDiscard":"Отменить сеанс без сохранения?",
     "st.prec":"Точность","st.hits":"Попадания","st.notSeen":"Не увидены","st.omissions":"Пропуски","st.errors":"Ошибки",
     "st.meanTime":"Среднее время","st.duration":"Длительность","st.hemiOf":"попаданий","st.fieldLR":"Левое / правое поле","st.fieldTB":"Верхнее / нижнее поле","st.bias":"Смещение ошибки",
@@ -5736,7 +5799,7 @@ button.link {
     ['#cfg-stim-shape option[value="x"]', "cfg.optX"],
     ['#cfg-stim-shape option[value="circle"]', "cfg.optCircle"],
     ["#screen-config fieldset:nth-of-type(2) label.field:nth-of-type(3)>span", "cfg.stimSize"],
-    ["#install-btn", "inst.btn"], ["#install-how", "inst.how"],
+    [".install-btn", "inst.btn"], [".install-how", "inst.how"],
     ["#cfg-origin-field>span", "cfg.origin"],
     ["#cfg-rad-field>span", "cfg.radRange"],
     ["#screen-config fieldset:nth-of-type(3) legend", "cfg.center"],
@@ -5887,10 +5950,8 @@ button.link {
     // El aviso de instalación y su guía también siguen al idioma.
     try {
       pintarInstalacion();
-      const ayudaInst = $("#install-help");
-      if (ayudaInst && !ayudaInst.classList.contains("hidden")) {
-        ayudaInst.innerHTML = textoGuiaInstalacion();
-      }
+      const abierta = $(".install-help") && !$(".install-help").classList.contains("hidden");
+      if (abierta) mostrarAyudaInstalacion(true);
     } catch (e) { /* aún sin montar */ }
     // segundos h3 (mapas) de los historiales
     const h3b1 = document.querySelectorAll("#screen-history h3");
